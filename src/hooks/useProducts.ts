@@ -91,6 +91,21 @@ export function useProducts() {
     onError: () => toast.error("שגיאה בהוספת מוצר"),
   });
 
+  const updateProduct = useMutation({
+    mutationFn: async ({ id, ...updates }: { id: string; product_name?: string; department?: string; base_quantity?: number; current_stock?: number }) => {
+      const { error } = await supabase
+        .from("products")
+        .update(updates)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("המוצר עודכן");
+    },
+    onError: () => toast.error("שגיאה בעדכון מוצר"),
+  });
+
   const updateStock = useMutation({
     mutationFn: async ({ id, current_stock }: { id: string; current_stock: number }) => {
       const { error } = await supabase
