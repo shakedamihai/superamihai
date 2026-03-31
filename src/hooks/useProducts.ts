@@ -213,6 +213,7 @@ export function useProducts() {
     updateProduct,
     updateStock,
     deleteProduct,
+    reorderProducts,
     finishShopping,
     copyListAsText,
   };
