@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { getDepartmentUnit } from "./useDepartments";
 
 export type Product = {
   id: string;
@@ -14,19 +15,6 @@ export type Product = {
   sort_order: number;
   updated_at: string;
 };
-
-export const DEPARTMENTS = [
-  "מקרר",
-  "ירקות",
-  "פירות",
-  "מוצרי יבש",
-  "מאפייה",
-  "קצביה",
-  "ניקיון",
-  "פארם",
-  "קפואים",
-  "כללי",
-] as const;
 
 export const getDepartmentColor = (dept: string) => {
   const map: Record<string, string> = {
@@ -59,7 +47,6 @@ export function useProducts() {
     },
   });
 
-  // Realtime subscription
   useEffect(() => {
     const channel = supabase
       .channel("products-realtime")
@@ -71,7 +58,6 @@ export function useProducts() {
         }
       )
       .subscribe();
-
     return () => {
       supabase.removeChannel(channel);
     };
@@ -97,10 +83,7 @@ export function useProducts() {
 
   const updateProduct = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; product_name?: string; department?: string; base_quantity?: number; current_stock?: number }) => {
-      const { error } = await supabase
-        .from("products")
-        .update(updates)
-        .eq("id", id);
+      const { error } = await supabase.from("products").update(updates).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -112,10 +95,7 @@ export function useProducts() {
 
   const updateStock = useMutation({
     mutationFn: async ({ id, current_stock }: { id: string; current_stock: number }) => {
-      const { error } = await supabase
-        .from("products")
-        .update({ current_stock })
-        .eq("id", id);
+      const { error } = await supabase.from("products").update({ current_stock }).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products"] }),
@@ -137,10 +117,7 @@ export function useProducts() {
   const reorderProducts = useMutation({
     mutationFn: async (updates: { id: string; sort_order: number }[]) => {
       for (const u of updates) {
-        const { error } = await supabase
-          .from("products")
-          .update({ sort_order: u.sort_order })
-          .eq("id", u.id);
+        const { error } = await supabase.from("products").update({ sort_order: u.sort_order }).eq("id", u.id);
         if (error) throw error;
       }
     },
@@ -150,11 +127,9 @@ export function useProducts() {
 
   const finishShopping = useMutation({
     mutationFn: async () => {
-      // Get items that need buying (to_buy > 0)
       const toBuy = products.filter(
         (p) => !p.is_one_time && p.base_quantity - p.current_stock > 0
       );
-      // Set current_stock = base_quantity for recurring items
       for (const p of toBuy) {
         const { error } = await supabase
           .from("products")
@@ -162,13 +137,9 @@ export function useProducts() {
           .eq("id", p.id);
         if (error) throw error;
       }
-      // Delete one-time items
       const oneTimeIds = products.filter((p) => p.is_one_time).map((p) => p.id);
       if (oneTimeIds.length > 0) {
-        const { error } = await supabase
-          .from("products")
-          .delete()
-          .in("id", oneTimeIds);
+        const { error } = await supabase.from("products").delete().in("id", oneTimeIds);
         if (error) throw error;
       }
     },
@@ -199,7 +170,8 @@ export function useProducts() {
   const copyListAsText = () => {
     const lines = shoppingList.map((p) => {
       const qty = p.is_one_time ? 1 : p.base_quantity - p.current_stock;
-      return `${qty} ${p.product_name}`;
+      const { unit } = getDepartmentUnit(p.department);
+      return `${qty} ${unit} ${p.product_name}`;
     });
     navigator.clipboard.writeText(lines.join(", "));
     toast.success("הרשימה הועתקה!");

@@ -2,16 +2,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { DEPARTMENTS } from "@/hooks/useProducts";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Zap } from "lucide-react";
+import { DepartmentCombobox } from "./DepartmentCombobox";
+import { getDepartmentUnit } from "@/hooks/useDepartments";
 
 interface AddProductViewProps {
   onAdd: (product: {
@@ -22,16 +16,18 @@ interface AddProductViewProps {
     is_one_time?: boolean;
   }) => void;
   isAdding: boolean;
+  departmentNames: string[];
+  onAddDepartment: (name: string) => void;
 }
 
-export function AddProductView({ onAdd, isAdding }: AddProductViewProps) {
+export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartment }: AddProductViewProps) {
   const [name, setName] = useState("");
-  const [department, setDepartment] = useState<string>(DEPARTMENTS[0]);
+  const [department, setDepartment] = useState<string>(departmentNames[0] || "כללי");
   const [baseQty, setBaseQty] = useState(1);
   const [isOneTime, setIsOneTime] = useState(false);
-
-  // Quick add for one-time items
   const [quickName, setQuickName] = useState("");
+
+  const { unit, step, min } = getDepartmentUnit(department);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,7 +40,7 @@ export function AddProductView({ onAdd, isAdding }: AddProductViewProps) {
       is_one_time: isOneTime,
     });
     setName("");
-    setBaseQty(1);
+    setBaseQty(min);
   };
 
   const handleQuickAdd = (e: React.FormEvent) => {
@@ -97,42 +93,42 @@ export function AddProductView({ onAdd, isAdding }: AddProductViewProps) {
 
           <div className="space-y-2">
             <Label>מחלקה</Label>
-            <Select value={department} onValueChange={setDepartment}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DEPARTMENTS.map((d) => (
-                  <SelectItem key={d} value={d}>
-                    {d}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <DepartmentCombobox
+              value={department}
+              onChange={(d) => {
+                setDepartment(d);
+                // Reset qty to appropriate min when switching departments
+                const newUnit = getDepartmentUnit(d);
+                setBaseQty(newUnit.min);
+              }}
+              departments={departmentNames}
+              onAddDepartment={onAddDepartment}
+            />
           </div>
 
           <div className="space-y-2">
-            <Label>כמות בסיס (יעד ליום ראשון)</Label>
+            <Label>כמות בסיס ({unit})</Label>
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setBaseQty(Math.max(1, baseQty - 1))}
+                onClick={() => setBaseQty(Math.max(min, baseQty - step))}
                 className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center font-bold text-lg"
                 disabled={isOneTime}
               >
                 -
               </button>
-              <span className="w-12 text-center font-bold text-xl tabular-nums">
+              <span className="w-16 text-center font-bold text-xl tabular-nums">
                 {isOneTime ? 1 : baseQty}
               </span>
               <button
                 type="button"
-                onClick={() => setBaseQty(baseQty + 1)}
+                onClick={() => setBaseQty(baseQty + step)}
                 className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center font-bold text-lg"
                 disabled={isOneTime}
               >
                 +
               </button>
+              <span className="text-sm text-muted-foreground">{unit}</span>
             </div>
           </div>
 

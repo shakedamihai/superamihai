@@ -2,6 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Minus, Plus, Pencil, Trash2, GripVertical } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
+import { getDepartmentUnit, isLactoseFree } from "@/hooks/useDepartments";
 
 interface SortableProductRowProps {
   product: Product;
@@ -27,13 +28,17 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
     zIndex: isDragging ? 50 : undefined,
   };
 
+  const { unit, step, min } = getDepartmentUnit(p.department);
   const toBuy = Math.max(0, p.base_quantity - p.current_stock);
+  const lactoseFree = isLactoseFree(p.product_name);
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between bg-card rounded-lg px-2 py-3 border border-border"
+      className={`flex items-center justify-between bg-card rounded-lg px-2 py-3 border ${
+        lactoseFree ? "border-sky-400 bg-sky-50/50 dark:bg-sky-950/20" : "border-border"
+      }`}
     >
       <button
         {...attributes}
@@ -43,11 +48,18 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
         <GripVertical className="h-4 w-4" />
       </button>
       <div className="flex-1 min-w-0 mr-1">
-        <div className="font-medium truncate text-sm">{p.product_name}</div>
+        <div className="font-medium truncate text-sm flex items-center gap-1.5">
+          {p.product_name}
+          {lactoseFree && (
+            <span className="text-[9px] bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 px-1.5 py-0.5 rounded font-bold shrink-0">
+              ללא לקטוז
+            </span>
+          )}
+        </div>
         <div className="text-xs text-muted-foreground">
-          בסיס: {p.base_quantity} | חסר:{" "}
+          בסיס: {p.base_quantity} {unit} | חסר:{" "}
           <span className={toBuy > 0 ? "text-secondary font-bold" : "text-primary"}>
-            {toBuy}
+            {toBuy} {unit}
           </span>
         </div>
       </div>
@@ -66,16 +78,16 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
         </button>
         <div className="w-px h-6 bg-border mx-0.5" />
         <button
-          onClick={() => onUpdateStock(p.id, Math.max(0, p.current_stock - 1))}
+          onClick={() => onUpdateStock(p.id, Math.max(0, p.current_stock - step))}
           className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-foreground hover:bg-destructive/20 hover:text-destructive transition-colors active:scale-95"
         >
           <Minus className="h-4 w-4" />
         </button>
-        <span className="w-8 text-center font-bold text-lg tabular-nums">
+        <span className="w-10 text-center font-bold text-lg tabular-nums">
           {p.current_stock}
         </span>
         <button
-          onClick={() => onUpdateStock(p.id, p.current_stock + 1)}
+          onClick={() => onUpdateStock(p.id, p.current_stock + step)}
           className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center text-foreground hover:bg-primary/20 hover:text-primary transition-colors active:scale-95"
         >
           <Plus className="h-4 w-4" />

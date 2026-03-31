@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Product, DEPARTMENTS } from "@/hooks/useProducts";
+import { Product } from "@/hooks/useProducts";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,27 +10,23 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { DepartmentCombobox } from "./DepartmentCombobox";
+import { getDepartmentUnit } from "@/hooks/useDepartments";
 
 interface EditProductDialogProps {
   product: Product | null;
   open: boolean;
   onClose: () => void;
   onSave: (updates: { id: string; product_name?: string; department?: string; base_quantity?: number }) => void;
+  departmentNames: string[];
+  onAddDepartment: (name: string) => void;
 }
 
-export function EditProductDialog({ product, open, onClose, onSave }: EditProductDialogProps) {
+export function EditProductDialog({ product, open, onClose, onSave, departmentNames, onAddDepartment }: EditProductDialogProps) {
   const [name, setName] = useState("");
   const [department, setDepartment] = useState("");
   const [baseQty, setBaseQty] = useState(1);
 
-  // Sync state when product changes
   const [lastId, setLastId] = useState<string | null>(null);
   if (product && product.id !== lastId) {
     setName(product.product_name);
@@ -38,6 +34,8 @@ export function EditProductDialog({ product, open, onClose, onSave }: EditProduc
     setBaseQty(product.base_quantity);
     setLastId(product.id);
   }
+
+  const { unit, step, min } = getDepartmentUnit(department);
 
   const handleSave = () => {
     if (!product || !name.trim()) return;
@@ -63,35 +61,36 @@ export function EditProductDialog({ product, open, onClose, onSave }: EditProduc
           </div>
           <div className="space-y-2">
             <Label>מחלקה</Label>
-            <Select value={department} onValueChange={setDepartment}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DEPARTMENTS.map((d) => (
-                  <SelectItem key={d} value={d}>{d}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <DepartmentCombobox
+              value={department}
+              onChange={(d) => {
+                setDepartment(d);
+                const newUnit = getDepartmentUnit(d);
+                setBaseQty(Math.max(newUnit.min, baseQty));
+              }}
+              departments={departmentNames}
+              onAddDepartment={onAddDepartment}
+            />
           </div>
           <div className="space-y-2">
-            <Label>כמות בסיס</Label>
+            <Label>כמות בסיס ({unit})</Label>
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={() => setBaseQty(Math.max(1, baseQty - 1))}
+                onClick={() => setBaseQty(Math.max(min, baseQty - step))}
                 className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center font-bold text-lg"
               >
                 -
               </button>
-              <span className="w-12 text-center font-bold text-xl tabular-nums">{baseQty}</span>
+              <span className="w-16 text-center font-bold text-xl tabular-nums">{baseQty}</span>
               <button
                 type="button"
-                onClick={() => setBaseQty(baseQty + 1)}
+                onClick={() => setBaseQty(baseQty + step)}
                 className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center font-bold text-lg"
               >
                 +
               </button>
+              <span className="text-sm text-muted-foreground">{unit}</span>
             </div>
           </div>
         </div>
