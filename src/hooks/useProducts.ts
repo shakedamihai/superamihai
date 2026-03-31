@@ -132,7 +132,21 @@ export function useProducts() {
     onError: () => toast.error("שגיאה במחיקת מוצר"),
   });
 
-  const finishShopping = useMutation({
+  const reorderProducts = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      for (const u of updates) {
+        const { error } = await supabase
+          .from("products")
+          .update({ sort_order: u.sort_order })
+          .eq("id", u.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products"] }),
+    onError: () => toast.error("שגיאה בשינוי סדר"),
+  });
+
+
     mutationFn: async () => {
       // Get items that need buying (to_buy > 0)
       const toBuy = products.filter(
