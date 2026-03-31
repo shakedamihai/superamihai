@@ -17,7 +17,8 @@ export type Product = {
 
 export const DEPARTMENTS = [
   "מקרר",
-  "ירקות ופירות",
+  "ירקות",
+  "פירות",
   "מוצרי יבש",
   "מאפייה",
   "קצביה",
@@ -30,9 +31,10 @@ export const DEPARTMENTS = [
 export const getDepartmentColor = (dept: string) => {
   const map: Record<string, string> = {
     "מקרר": "bg-department-fridge/15 text-department-fridge border-department-fridge/30",
-    "ירקות ופירות": "bg-department-vegetables/15 text-department-vegetables border-department-vegetables/30",
+    "ירקות": "bg-department-vegetables/15 text-department-vegetables border-department-vegetables/30",
+    "פירות": "bg-secondary/15 text-secondary border-secondary/30",
     "מוצרי יבש": "bg-department-dry/15 text-department-dry border-department-dry/30",
-    "מאפייה": "bg-secondary/15 text-secondary border-secondary/30",
+    "מאפייה": "bg-muted text-muted-foreground border-border",
     "קצביה": "bg-destructive/15 text-destructive border-destructive/30",
     "ניקיון": "bg-department-cleaning/15 text-department-cleaning border-department-cleaning/30",
     "פארם": "bg-department-pharmacy/15 text-department-pharmacy border-department-pharmacy/30",
