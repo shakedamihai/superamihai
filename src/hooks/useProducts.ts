@@ -50,6 +50,7 @@ export function useProducts() {
         .from("products")
         .select("*")
         .order("department", { ascending: true })
+        .order("sort_order", { ascending: true })
         .order("product_name", { ascending: true });
       if (error) throw error;
       return data as Product[];
