@@ -11,6 +11,7 @@ export type Product = {
   current_stock: number;
   is_one_time: boolean;
   created_at: string;
+  sort_order: number;
   updated_at: string;
 };
 
@@ -49,6 +50,7 @@ export function useProducts() {
         .from("products")
         .select("*")
         .order("department", { ascending: true })
+        .order("sort_order", { ascending: true })
         .order("product_name", { ascending: true });
       if (error) throw error;
       return data as Product[];
@@ -130,6 +132,20 @@ export function useProducts() {
     onError: () => toast.error("שגיאה במחיקת מוצר"),
   });
 
+  const reorderProducts = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      for (const u of updates) {
+        const { error } = await supabase
+          .from("products")
+          .update({ sort_order: u.sort_order })
+          .eq("id", u.id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products"] }),
+    onError: () => toast.error("שגיאה בשינוי סדר"),
+  });
+
   const finishShopping = useMutation({
     mutationFn: async () => {
       // Get items that need buying (to_buy > 0)
@@ -197,6 +213,7 @@ export function useProducts() {
     updateProduct,
     updateStock,
     deleteProduct,
+    reorderProducts,
     finishShopping,
     copyListAsText,
   };

@@ -1,4 +1,4 @@
-import { Minus, Plus, ChevronDown, Pencil, Trash2 } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { Product, getDepartmentColor } from "@/hooks/useProducts";
 import {
   Collapsible,
@@ -17,20 +17,41 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { SortableProductRow } from "./SortableProductRow";
 
 interface PantryCheckViewProps {
   productsByDepartment: Record<string, Product[]>;
   onUpdateStock: (id: string, stock: number) => void;
   onUpdateProduct: (updates: { id: string; product_name?: string; department?: string; base_quantity?: number }) => void;
   onDeleteProduct: (id: string) => void;
+  onReorderProducts: (updates: { id: string; sort_order: number }[]) => void;
 }
 
-export function PantryCheckView({ productsByDepartment, onUpdateStock, onUpdateProduct, onDeleteProduct }: PantryCheckViewProps) {
+export function PantryCheckView({ productsByDepartment, onUpdateStock, onUpdateProduct, onDeleteProduct, onReorderProducts }: PantryCheckViewProps) {
   const [openDepts, setOpenDepts] = useState<Record<string, boolean>>(() =>
     Object.keys(productsByDepartment).reduce((acc, d) => ({ ...acc, [d]: true }), {})
   );
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+  );
 
   const recurringByDept = Object.entries(productsByDepartment).reduce(
     (acc, [dept, items]) => {
@@ -50,10 +71,24 @@ export function PantryCheckView({ productsByDepartment, onUpdateStock, onUpdateP
     );
   }
 
+  const handleDragEnd = (dept: string) => (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    const items = recurringByDept[dept];
+    const oldIndex = items.findIndex((p) => p.id === active.id);
+    const newIndex = items.findIndex((p) => p.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+
+    const reordered = arrayMove(items, oldIndex, newIndex);
+    const updates = reordered.map((p, i) => ({ id: p.id, sort_order: i }));
+    onReorderProducts(updates);
+  };
+
   return (
     <div className="space-y-3 animate-slide-in">
       <p className="text-sm text-muted-foreground px-1">
-        עדכנו את הכמות הנוכחית של כל מוצר בבית
+        עדכנו את הכמות הנוכחית של כל מוצר בבית. גררו ⠿ לשינוי סדר.
       </p>
       {Object.entries(recurringByDept).map(([dept, items]) => (
         <Collapsible
@@ -68,55 +103,26 @@ export function PantryCheckView({ productsByDepartment, onUpdateStock, onUpdateP
             <ChevronDown className={`h-4 w-4 transition-transform ${openDepts[dept] !== false ? "rotate-180" : ""}`} />
           </CollapsibleTrigger>
           <CollapsibleContent className="mt-1 space-y-1">
-            {items.map((p) => {
-              const toBuy = Math.max(0, p.base_quantity - p.current_stock);
-              return (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between bg-card rounded-lg px-3 py-3 border border-border"
-                >
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{p.product_name}</div>
-                    <div className="text-xs text-muted-foreground">
-                      בסיס: {p.base_quantity} | חסר:{" "}
-                      <span className={toBuy > 0 ? "text-secondary font-bold" : "text-primary"}>
-                        {toBuy}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-1 mr-2">
-                    <button
-                      onClick={() => setEditProduct(p)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      onClick={() => setDeleteTarget(p)}
-                      className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
-                    <div className="w-px h-6 bg-border mx-1" />
-                    <button
-                      onClick={() => onUpdateStock(p.id, Math.max(0, p.current_stock - 1))}
-                      className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-foreground hover:bg-destructive/20 hover:text-destructive transition-colors active:scale-95"
-                    >
-                      <Minus className="h-4 w-4" />
-                    </button>
-                    <span className="w-10 text-center font-bold text-lg tabular-nums">
-                      {p.current_stock}
-                    </span>
-                    <button
-                      onClick={() => onUpdateStock(p.id, p.current_stock + 1)}
-                      className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-foreground hover:bg-primary/20 hover:text-primary transition-colors active:scale-95"
-                    >
-                      <Plus className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              );
-            })}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd(dept)}
+            >
+              <SortableContext
+                items={items.map((p) => p.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {items.map((p) => (
+                  <SortableProductRow
+                    key={p.id}
+                    product={p}
+                    onUpdateStock={onUpdateStock}
+                    onEdit={setEditProduct}
+                    onDelete={setDeleteTarget}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </CollapsibleContent>
         </Collapsible>
       ))}

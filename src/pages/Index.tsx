@@ -19,6 +19,7 @@ const Index = () => {
     updateProduct,
     updateStock,
     deleteProduct,
+    reorderProducts,
     finishShopping,
     copyListAsText,
   } = useProducts();
@@ -65,6 +66,7 @@ const Index = () => {
             onUpdateStock={(id, stock) => updateStock.mutate({ id, current_stock: stock })}
             onUpdateProduct={(updates) => updateProduct.mutate(updates)}
             onDeleteProduct={(id) => deleteProduct.mutate(id)}
+            onReorderProducts={(updates) => reorderProducts.mutate(updates)}
           />
         )}
         {activeTab === "add" && (
