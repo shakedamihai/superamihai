@@ -194,6 +194,7 @@ export function useProducts() {
     shoppingList,
     shoppingByDepartment,
     addProduct,
+    updateProduct,
     updateStock,
     deleteProduct,
     finishShopping,

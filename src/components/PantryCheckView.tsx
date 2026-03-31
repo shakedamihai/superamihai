@@ -1,4 +1,4 @@
-import { Minus, Plus, ChevronDown } from "lucide-react";
+import { Minus, Plus, ChevronDown, Pencil, Trash2 } from "lucide-react";
 import { Product, getDepartmentColor } from "@/hooks/useProducts";
 import {
   Collapsible,
@@ -6,18 +6,32 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { useState } from "react";
+import { EditProductDialog } from "./EditProductDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface PantryCheckViewProps {
   productsByDepartment: Record<string, Product[]>;
   onUpdateStock: (id: string, stock: number) => void;
+  onUpdateProduct: (updates: { id: string; product_name?: string; department?: string; base_quantity?: number }) => void;
+  onDeleteProduct: (id: string) => void;
 }
 
-export function PantryCheckView({ productsByDepartment, onUpdateStock }: PantryCheckViewProps) {
+export function PantryCheckView({ productsByDepartment, onUpdateStock, onUpdateProduct, onDeleteProduct }: PantryCheckViewProps) {
   const [openDepts, setOpenDepts] = useState<Record<string, boolean>>(() =>
     Object.keys(productsByDepartment).reduce((acc, d) => ({ ...acc, [d]: true }), {})
   );
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
-  // Filter out one-time items
   const recurringByDept = Object.entries(productsByDepartment).reduce(
     (acc, [dept, items]) => {
       const recurring = items.filter((p) => !p.is_one_time);
@@ -59,7 +73,7 @@ export function PantryCheckView({ productsByDepartment, onUpdateStock }: PantryC
               return (
                 <div
                   key={p.id}
-                  className="flex items-center justify-between bg-card rounded-lg px-4 py-3 border border-border"
+                  className="flex items-center justify-between bg-card rounded-lg px-3 py-3 border border-border"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="font-medium truncate">{p.product_name}</div>
@@ -70,7 +84,20 @@ export function PantryCheckView({ productsByDepartment, onUpdateStock }: PantryC
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 mr-3">
+                  <div className="flex items-center gap-1 mr-2">
+                    <button
+                      onClick={() => setEditProduct(p)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      onClick={() => setDeleteTarget(p)}
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                    <div className="w-px h-6 bg-border mx-1" />
                     <button
                       onClick={() => onUpdateStock(p.id, Math.max(0, p.current_stock - 1))}
                       className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center text-foreground hover:bg-destructive/20 hover:text-destructive transition-colors active:scale-95"
@@ -93,6 +120,33 @@ export function PantryCheckView({ productsByDepartment, onUpdateStock }: PantryC
           </CollapsibleContent>
         </Collapsible>
       ))}
+
+      <EditProductDialog
+        product={editProduct}
+        open={!!editProduct}
+        onClose={() => setEditProduct(null)}
+        onSave={onUpdateProduct}
+      />
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => { if (!o) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>מחיקת מוצר</AlertDialogTitle>
+            <AlertDialogDescription>
+              למחוק את "{deleteTarget?.product_name}"? לא ניתן לבטל פעולה זו.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => { if (deleteTarget) onDeleteProduct(deleteTarget.id); setDeleteTarget(null); }}
+            >
+              מחק
+            </AlertDialogAction>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
