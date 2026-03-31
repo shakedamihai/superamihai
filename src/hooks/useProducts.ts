@@ -146,7 +146,7 @@ export function useProducts() {
     onError: () => toast.error("שגיאה בשינוי סדר"),
   });
 
-
+  const finishShopping = useMutation({
     mutationFn: async () => {
       // Get items that need buying (to_buy > 0)
       const toBuy = products.filter(
