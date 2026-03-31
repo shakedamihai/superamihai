@@ -16,6 +16,7 @@ const Index = () => {
     shoppingList,
     shoppingByDepartment,
     addProduct,
+    updateProduct,
     updateStock,
     deleteProduct,
     finishShopping,
