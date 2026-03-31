@@ -11,6 +11,7 @@ export type Product = {
   current_stock: number;
   is_one_time: boolean;
   created_at: string;
+  sort_order: number;
   updated_at: string;
 };
 
