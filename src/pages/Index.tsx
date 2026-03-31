@@ -16,6 +16,7 @@ const Index = () => {
     shoppingList,
     shoppingByDepartment,
     addProduct,
+    updateProduct,
     updateStock,
     deleteProduct,
     finishShopping,
@@ -62,6 +63,8 @@ const Index = () => {
           <PantryCheckView
             productsByDepartment={productsByDepartment}
             onUpdateStock={(id, stock) => updateStock.mutate({ id, current_stock: stock })}
+            onUpdateProduct={(updates) => updateProduct.mutate(updates)}
+            onDeleteProduct={(id) => deleteProduct.mutate(id)}
           />
         )}
         {activeTab === "add" && (
