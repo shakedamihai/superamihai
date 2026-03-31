@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      products: {
+        Row: {
+          base_quantity: number
+          created_at: string
+          current_stock: number
+          department: string
+          id: string
+          is_one_time: boolean
+          product_name: string
+          updated_at: string
+        }
+        Insert: {
+          base_quantity?: number
+          created_at?: string
+          current_stock?: number
+          department?: string
+          id?: string
+          is_one_time?: boolean
+          product_name: string
+          updated_at?: string
+        }
+        Update: {
+          base_quantity?: number
+          created_at?: string
+          current_stock?: number
+          department?: string
+          id?: string
+          is_one_time?: boolean
+          product_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
