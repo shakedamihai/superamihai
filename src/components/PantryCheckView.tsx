@@ -213,8 +213,9 @@ export function PantryCheckView({
     );
   };
 
+  // התיקון שלך נמצא בשורה הבאה - הוספנו px-4 ו-overflow-x-hidden
   return (
-    <div className="space-y-3 animate-slide-in">
+    <div className="space-y-3 animate-slide-in px-4 max-w-full overflow-x-hidden">
       <p className="text-sm text-muted-foreground px-1">
         עדכנו את הכמות הנוכחית של כל מוצר בבית. גררו ⠿ לשינוי סדר.
       </p>
