@@ -141,8 +141,8 @@ export function PantryCheckView({
   };
 
   return (
-    <div className="w-full flex flex-col items-center py-4 min-h-screen">
-      <div className="w-full max-w-[calc(100vw-32px)] space-y-4">
+    <div className="w-full flex flex-col items-center py-4 min-h-screen bg-background">
+      <div className="w-full max-w-[calc(100vw-32px)] space-y-2">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDeptDragEnd}>
           <SortableContext items={orderedDepts.map(d => d.id)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col">
@@ -154,7 +154,7 @@ export function PantryCheckView({
                         <span>{dept.name} ({recurringByDept[dept.name]?.length || 0})</span>
                         <ChevronDown className={`h-4 w-4 transition-transform ${openDepts[dept.name] !== false ? "rotate-180" : ""}`} />
                       </CollapsibleTrigger>
-                      <button onClick={(e) => { e.stopPropagation(); setRenameDept({ oldName: dept.name, newName: dept.name }); }} className="p-3 border rounded-lg bg-card">
+                      <button onClick={(e) => { e.stopPropagation(); setRenameDept({ oldName: dept.name, newName: dept.name }); }} className="p-3 border rounded-lg bg-card shadow-sm">
                         <Pencil className="h-4 w-4" />
                       </button>
                     </div>
@@ -180,12 +180,12 @@ export function PantryCheckView({
       <EditProductDialog product={editProduct} open={!!editProduct} onClose={() => setEditProduct(null)} onSave={onUpdateProduct} departmentNames={departmentNames} onAddDepartment={onAddDepartment} />
       
       <Dialog open={!!renameDept} onOpenChange={(o) => !o && setRenameDept(null)}>
-        <DialogContent className="max-w-[90vw] rounded-2xl">
+        <DialogContent className="max-w-[90vw] rounded-2xl p-6">
           <DialogHeader><DialogTitle className="text-right">עריכת מחלקה</DialogTitle></DialogHeader>
-          <Input value={renameDept?.newName || ""} onChange={(e) => setRenameDept(prev => prev ? { ...prev, newName: e.target.value } : null)} className="text-right" />
-          <DialogFooter className="flex-row-reverse gap-2 pt-4">
-            <Button onClick={() => { if (renameDept?.newName.trim()) onRenameDepartment(renameDept.oldName, renameDept.newName.trim()); setRenameDept(null); }}>שמור</Button>
-            <Button variant="outline" onClick={() => setRenameDept(null)}>ביטול</Button>
+          <div className="py-4"><Input value={renameDept?.newName || ""} onChange={(e) => setRenameDept(p => p ? { ...p, newName: e.target.value } : null)} className="text-right h-12" autoFocus /></div>
+          <DialogFooter className="flex-row-reverse gap-3">
+            <Button className="h-12 flex-1" onClick={() => { if (renameDept?.newName.trim()) onRenameDepartment(renameDept.oldName, renameDept.newName.trim()); setRenameDept(null); }}>שמור</Button>
+            <Button variant="outline" className="h-12 flex-1" onClick={() => setRenameDept(null)}>ביטול</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
