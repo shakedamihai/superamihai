@@ -58,6 +58,7 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
+// רכיב מחלקה שמתכווץ בזמן גרירה
 function SortableDepartmentItem({
   dept,
   children,
@@ -71,22 +72,24 @@ function SortableDepartmentItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.6 : 1,
-    zIndex: isDragging ? 50 : undefined,
+    opacity: isDragging ? 0.9 : 1,
+    zIndex: isDragging ? 100 : undefined,
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="w-full flex justify-center mb-4">
-      <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
+    <div ref={setNodeRef} style={style} className={`w-full flex justify-center mb-3 select-none`}>
+      <div className={`w-full max-w-[calc(100vw-32px)] flex items-start gap-2 ${isDragging ? 'h-[52px] overflow-hidden shadow-lg border-2 border-primary/20 rounded-xl' : ''}`}>
         <button
           {...attributes}
           {...listeners}
-          className="w-10 h-12 flex items-center justify-center bg-muted rounded-lg text-muted-foreground shrink-0"
+          className="w-10 h-12 flex items-center justify-center bg-muted rounded-lg text-muted-foreground shrink-0 touch-none"
           style={{ touchAction: 'none' }}
         >
           <GripVertical className="h-6 w-6" />
         </button>
-        <div className="flex-1 overflow-hidden">{children}</div>
+        <div className="flex-1 overflow-hidden">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -111,7 +114,7 @@ export function PantryCheckView({
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } })
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 10 } })
   );
 
   const recurringByDept = Object.entries(productsByDepartment || {}).reduce(
@@ -153,8 +156,8 @@ export function PantryCheckView({
   };
 
   return (
-    <div className="w-full flex flex-col items-center py-4 min-h-screen overflow-x-hidden">
-      <div className="w-full max-w-[calc(100vw-32px)] space-y-4">
+    <div className="w-full flex flex-col items-center py-4 min-h-screen">
+      <div className="w-full max-w-[calc(100vw-32px)] space-y-2">
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDeptDragEnd}>
           <SortableContext items={orderedDepts.map(d => d.id)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col">
@@ -169,7 +172,10 @@ export function PantryCheckView({
                         <span>{dept.name} ({recurringByDept[dept.name]?.length || 0})</span>
                         <ChevronDown className={`h-4 w-4 transition-transform ${openDepts[dept.name] !== false ? "rotate-180" : ""}`} />
                       </CollapsibleTrigger>
-                      <button onClick={() => setRenameDept({ oldName: dept.name, newName: dept.name })} className="p-2 border rounded-lg bg-card shadow-sm">
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setRenameDept({ oldName: dept.name, newName: dept.name }); }} 
+                        className="w-11 h-11 flex items-center justify-center border rounded-lg bg-card shadow-sm shrink-0"
+                      >
                         <Pencil className="h-4 w-4" />
                       </button>
                     </div>
@@ -178,47 +184,3 @@ export function PantryCheckView({
                         <SortableContext items={recurringByDept[dept.name]?.map(p => p.id) || []} strategy={verticalListSortingStrategy}>
                           <div className="flex flex-col gap-2">
                             {recurringByDept[dept.name]?.map((p) => (
-                              <SortableProductRow key={p.id} product={p} onUpdateStock={onUpdateStock} onEdit={setEditProduct} onDelete={setDeleteTarget} />
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
-                    </CollapsibleContent>
-                  </Collapsible>
-                </SortableDepartmentItem>
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-      </div>
-
-      <EditProductDialog product={editProduct} open={!!editProduct} onClose={() => setEditProduct(null)} onSave={onUpdateProduct} departmentNames={departmentNames} onAddDepartment={onAddDepartment} />
-      
-      <Dialog open={!!renameDept} onOpenChange={(o) => !o && setRenameDept(null)}>
-        <DialogContent className="max-w-[90vw] rounded-2xl">
-          <DialogHeader><DialogTitle className="text-right">עריכת מחלקה</DialogTitle></DialogHeader>
-          <div className="py-4">
-            <Input value={renameDept?.newName || ""} onChange={(e) => setRenameDept(prev => prev ? { ...prev, newName: e.target.value } : null)} className="text-right h-12" autoFocus />
-          </div>
-          <DialogFooter className="flex-row-reverse gap-2">
-            <Button onClick={() => { if (renameDept?.newName.trim()) onRenameDepartment(renameDept.oldName, renameDept.newName.trim()); setRenameDept(null); }}>שמור</Button>
-            <Button variant="outline" onClick={() => setRenameDept(null)}>ביטול</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="rounded-xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-right">מחיקת מוצר</AlertDialogTitle>
-            <AlertDialogDescription className="text-right">למחוק את "{deleteTarget?.product_name}"? לא ניתן לבטל.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-2">
-            <AlertDialogAction className="bg-destructive" onClick={() => { if (deleteTarget) onDeleteProduct(deleteTarget.id); setDeleteTarget(null); }}>מחק</AlertDialogAction>
-            <AlertDialogCancel>ביטול</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
-  );
-}
