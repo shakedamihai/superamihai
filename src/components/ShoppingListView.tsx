@@ -81,21 +81,21 @@ export function ShoppingListView({
         </Button>
         <AlertDialog>
           <AlertDialogTrigger asChild>
-            <Button variant="default" className="flex-1 gap-2" disabled={isFinishing}>
+            <Button variant="default" className="flex-1 gap-2" disabled={isFinishing || checkedCount === 0}>
               <CheckCircle2 className="h-4 w-4" />
-              סיימתי קניות
+              מחק מוצרים שנקנו
             </Button>
           </AlertDialogTrigger>
           <AlertDialogContent>
             <AlertDialogHeader>
-              <AlertDialogTitle>סיום קניות</AlertDialogTitle>
+              <AlertDialogTitle>מחיקת מוצרים שנקנו</AlertDialogTitle>
               <AlertDialogDescription>
-                פעולה זו תעדכן את המלאי לכמות הבסיס ותמחק פריטים חד-פעמיים. להמשיך?
+                פעולה זו תעדכן את המלאי לכמות הבסיס עבור {checkedCount} מוצרים מסומנים ותמחק פריטים חד-פעמיים מסומנים. להמשיך?
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="flex-row-reverse gap-2">
-              <AlertDialogAction onClick={() => { onFinishShopping(); setChecked(new Set()); }}>
-                כן, סיימתי
+              <AlertDialogAction onClick={() => { onFinishChecked(checked); setChecked(new Set()); }}>
+                כן, מחק
               </AlertDialogAction>
               <AlertDialogCancel>ביטול</AlertDialogCancel>
             </AlertDialogFooter>
