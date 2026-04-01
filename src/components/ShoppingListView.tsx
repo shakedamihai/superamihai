@@ -24,7 +24,7 @@ interface ShoppingListViewProps {
   shoppingByDepartment: Record<string, Product[]>;
   shoppingList: Product[];
   onCopyList: () => void;
-  onFinishShopping: () => void;
+  onFinishChecked: (checkedIds: Set<string>) => void;
   onDeleteProduct: (id: string) => void;
   isFinishing: boolean;
 }
