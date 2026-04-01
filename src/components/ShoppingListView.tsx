@@ -1,7 +1,7 @@
 import { Copy, CheckCircle2, ChevronDown, Trash2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Product, getDepartmentColor } from "@/hooks/useProducts";
-import { getDepartmentUnit, isLactoseFree } from "@/hooks/useDepartments";
+import { isLactoseFree } from "@/hooks/useDepartments";
 import {
   Collapsible,
   CollapsibleContent,
