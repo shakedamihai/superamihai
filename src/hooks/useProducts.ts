@@ -84,7 +84,7 @@ export function useProducts() {
   });
 
   const updateProduct = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; product_name?: string; department?: string; base_quantity?: number; current_stock?: number }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; product_name?: string; department?: string; base_quantity?: number; current_stock?: number; unit?: string }) => {
       const { error } = await supabase.from("products").update(updates).eq("id", id);
       if (error) throw error;
     },
