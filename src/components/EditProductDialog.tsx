@@ -11,13 +11,13 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { DepartmentCombobox } from "./DepartmentCombobox";
-import { getDepartmentUnit } from "@/hooks/useDepartments";
+import { UnitCombobox } from "./UnitCombobox";
 
 interface EditProductDialogProps {
   product: Product | null;
   open: boolean;
   onClose: () => void;
-  onSave: (updates: { id: string; product_name?: string; department?: string; base_quantity?: number }) => void;
+  onSave: (updates: { id: string; product_name?: string; department?: string; base_quantity?: number; unit?: string }) => void;
   departmentNames: string[];
   onAddDepartment: (name: string) => void;
 }
@@ -25,17 +25,20 @@ interface EditProductDialogProps {
 export function EditProductDialog({ product, open, onClose, onSave, departmentNames, onAddDepartment }: EditProductDialogProps) {
   const [name, setName] = useState("");
   const [department, setDepartment] = useState("");
+  const [unit, setUnit] = useState("יחידות");
   const [baseQty, setBaseQty] = useState(1);
 
   const [lastId, setLastId] = useState<string | null>(null);
   if (product && product.id !== lastId) {
     setName(product.product_name);
     setDepartment(product.department);
+    setUnit(product.unit || "יחידות");
     setBaseQty(product.base_quantity);
     setLastId(product.id);
   }
 
-  const { unit, step, min } = getDepartmentUnit(department);
+  const step = unit === "קילו" ? 0.5 : unit === "גרם" ? 100 : 1;
+  const min = step;
 
   const handleSave = () => {
     if (!product || !name.trim()) return;
@@ -44,6 +47,7 @@ export function EditProductDialog({ product, open, onClose, onSave, departmentNa
       product_name: name.trim(),
       department,
       base_quantity: baseQty,
+      unit,
     });
     onClose();
   };
@@ -63,14 +67,18 @@ export function EditProductDialog({ product, open, onClose, onSave, departmentNa
             <Label>מחלקה</Label>
             <DepartmentCombobox
               value={department}
-              onChange={(d) => {
-                setDepartment(d);
-                const newUnit = getDepartmentUnit(d);
-                setBaseQty(Math.max(newUnit.min, baseQty));
-              }}
+              onChange={setDepartment}
               departments={departmentNames}
               onAddDepartment={onAddDepartment}
             />
+          </div>
+          <div className="space-y-2">
+            <Label>יחידת מידה</Label>
+            <UnitCombobox value={unit} onChange={(u) => {
+              setUnit(u);
+              const newStep = u === "קילו" ? 0.5 : u === "גרם" ? 100 : 1;
+              setBaseQty(Math.max(newStep, baseQty));
+            }} />
           </div>
           <div className="space-y-2">
             <Label>כמות בסיס ({unit})</Label>

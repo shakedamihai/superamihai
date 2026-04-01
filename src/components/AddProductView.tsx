@@ -5,7 +5,8 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Zap } from "lucide-react";
 import { DepartmentCombobox } from "./DepartmentCombobox";
-import { getDepartmentUnit, autoCategorize } from "@/hooks/useDepartments";
+import { UnitCombobox } from "./UnitCombobox";
+import { autoCategorize } from "@/hooks/useDepartments";
 
 interface AddProductViewProps {
   onAdd: (product: {
@@ -14,6 +15,7 @@ interface AddProductViewProps {
     base_quantity: number;
     current_stock?: number;
     is_one_time?: boolean;
+    unit?: string;
   }) => void;
   isAdding: boolean;
   departmentNames: string[];
@@ -23,11 +25,13 @@ interface AddProductViewProps {
 export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartment }: AddProductViewProps) {
   const [name, setName] = useState("");
   const [department, setDepartment] = useState<string>(departmentNames[0] || "כללי");
+  const [unit, setUnit] = useState("יחידות");
   const [baseQty, setBaseQty] = useState(1);
   const [isOneTime, setIsOneTime] = useState(false);
   const [quickName, setQuickName] = useState("");
 
-  const { unit, step, min } = getDepartmentUnit(department);
+  const step = unit === "קילו" ? 0.5 : unit === "גרם" ? 100 : 1;
+  const min = step;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,6 +42,7 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
       base_quantity: isOneTime ? 1 : baseQty,
       current_stock: 0,
       is_one_time: isOneTime,
+      unit: isOneTime ? "יחידות" : unit,
     });
     setName("");
     setBaseQty(min);
@@ -53,6 +58,7 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
       base_quantity: 1,
       current_stock: 0,
       is_one_time: true,
+      unit: "יחידות",
     });
     setQuickName("");
   };
@@ -96,15 +102,19 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
             <Label>מחלקה</Label>
             <DepartmentCombobox
               value={department}
-              onChange={(d) => {
-                setDepartment(d);
-                // Reset qty to appropriate min when switching departments
-                const newUnit = getDepartmentUnit(d);
-                setBaseQty(newUnit.min);
-              }}
+              onChange={setDepartment}
               departments={departmentNames}
               onAddDepartment={onAddDepartment}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label>יחידת מידה</Label>
+            <UnitCombobox value={unit} onChange={(u) => {
+              setUnit(u);
+              const newStep = u === "קילו" ? 0.5 : u === "גרם" ? 100 : 1;
+              setBaseQty(newStep);
+            }} />
           </div>
 
           <div className="space-y-2">

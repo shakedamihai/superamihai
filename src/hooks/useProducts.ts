@@ -14,6 +14,7 @@ export type Product = {
   created_at: string;
   sort_order: number;
   updated_at: string;
+  unit: string;
 };
 
 export const getDepartmentColor = (dept: string) => {
@@ -70,6 +71,7 @@ export function useProducts() {
       base_quantity: number;
       current_stock?: number;
       is_one_time?: boolean;
+      unit?: string;
     }) => {
       const { error } = await supabase.from("products").insert(product);
       if (error) throw error;
@@ -82,7 +84,7 @@ export function useProducts() {
   });
 
   const updateProduct = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; product_name?: string; department?: string; base_quantity?: number; current_stock?: number }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; product_name?: string; department?: string; base_quantity?: number; current_stock?: number; unit?: string }) => {
       const { error } = await supabase.from("products").update(updates).eq("id", id);
       if (error) throw error;
     },
@@ -171,8 +173,7 @@ export function useProducts() {
   const copyListAsText = () => {
     const lines = shoppingList.map((p) => {
       const qty = p.is_one_time ? 1 : p.base_quantity - p.current_stock;
-      const { unit } = getDepartmentUnit(p.department);
-      return `${qty} ${unit} ${p.product_name}`;
+      return `${qty} ${p.unit} ${p.product_name}`;
     });
     navigator.clipboard.writeText(lines.join(", "));
     toast.success("הרשימה הועתקה!");

@@ -1,7 +1,7 @@
 import { Copy, CheckCircle2, ChevronDown, Trash2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Product, getDepartmentColor } from "@/hooks/useProducts";
-import { getDepartmentUnit, isLactoseFree } from "@/hooks/useDepartments";
+import { isLactoseFree } from "@/hooks/useDepartments";
 import {
   Collapsible,
   CollapsibleContent,
@@ -119,7 +119,7 @@ export function ShoppingListView({
           <CollapsibleContent className="mt-1 space-y-1">
             {items.map((p) => {
               const qty = p.is_one_time ? 1 : Math.max(0, p.base_quantity - p.current_stock);
-              const { unit } = getDepartmentUnit(p.department);
+              const unit = p.unit || "יחידות";
               const isChecked = checked.has(p.id);
               const lactoseFree = isLactoseFree(p.product_name);
 
@@ -143,14 +143,10 @@ export function ShoppingListView({
                     }`}>
                       {isChecked && <Check className="h-4 w-4" />}
                     </div>
-                    <span className="bg-primary/10 text-primary font-bold rounded-full w-8 h-8 flex items-center justify-center text-sm">
-                      {qty}
-                    </span>
                     <div>
                       <span className={`font-medium ${isChecked ? "line-through" : ""}`}>
-                        {p.product_name}
+                        {qty} {unit} {p.product_name}
                       </span>
-                      <span className="text-xs text-muted-foreground mr-1">{unit}</span>
                       {lactoseFree && (
                         <span className="text-[9px] bg-sky-100 text-sky-700 dark:bg-sky-900 dark:text-sky-300 px-1.5 py-0.5 rounded font-bold mr-1">
                           ללא לקטוז
