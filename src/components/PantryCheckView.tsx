@@ -76,7 +76,7 @@ function SortableDepartmentItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} className="px-4">
       <div className="flex items-center gap-1">
         <button
           {...attributes}
@@ -124,18 +124,16 @@ export function PantryCheckView({
     {} as Record<string, Product[]>
   );
 
-  // Order departments by their sort_order from departments table
   const orderedDepts = departments
     .filter((d) => recurringByDept[d.name])
     .map((d) => d);
 
-  // Also include departments that have products but aren't in the departments table
   const knownNames = new Set(departments.map((d) => d.name));
   const extraDepts = Object.keys(recurringByDept).filter((name) => !knownNames.has(name));
 
   if (Object.keys(recurringByDept).length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-slide-in">
+      <div className="flex flex-col items-center justify-center py-20 text-muted-foreground animate-slide-in px-4 text-center">
         <p className="text-lg font-medium">אין מוצרים קבועים</p>
         <p className="text-sm mt-1">הוסיפו מוצרים בלשונית "הוספה"</p>
       </div>
@@ -197,15 +195,17 @@ export function PantryCheckView({
               items={items.map((p) => p.id)}
               strategy={verticalListSortingStrategy}
             >
-              {items.map((p) => (
-                <SortableProductRow
-                  key={p.id}
-                  product={p}
-                  onUpdateStock={onUpdateStock}
-                  onEdit={setEditProduct}
-                  onDelete={setDeleteTarget}
-                />
-              ))}
+              <div className="flex flex-col gap-1">
+                {items.map((p) => (
+                  <SortableProductRow
+                    key={p.id}
+                    product={p}
+                    onUpdateStock={onUpdateStock}
+                    onEdit={setEditProduct}
+                    onDelete={setDeleteTarget}
+                  />
+                ))}
+              </div>
             </SortableContext>
           </DndContext>
         </CollapsibleContent>
@@ -213,10 +213,9 @@ export function PantryCheckView({
     );
   };
 
-  // התיקון שלך נמצא בשורה הבאה - הוספנו px-4 ו-overflow-x-hidden
   return (
-    <div className="space-y-3 animate-slide-in px-4 max-w-full overflow-x-hidden">
-      <p className="text-sm text-muted-foreground px-1">
+    <div className="w-full flex flex-col gap-3 py-4 overflow-x-hidden max-w-full">
+      <p className="text-sm text-muted-foreground px-4 text-right">
         עדכנו את הכמות הנוכחית של כל מוצר בבית. גררו ⠿ לשינוי סדר.
       </p>
 
@@ -229,18 +228,22 @@ export function PantryCheckView({
           items={orderedDepts.map((d) => d.id)}
           strategy={verticalListSortingStrategy}
         >
-          {orderedDepts.map((dept) => (
-            <SortableDepartmentItem key={dept.id} dept={dept}>
-              {renderDeptContent(dept.name)}
-            </SortableDepartmentItem>
-          ))}
+          <div className="flex flex-col gap-3">
+            {orderedDepts.map((dept) => (
+              <SortableDepartmentItem key={dept.id} dept={dept}>
+                {renderDeptContent(dept.name)}
+              </SortableDepartmentItem>
+            ))}
+          </div>
         </SortableContext>
       </DndContext>
 
-      {/* Extra departments not in departments table */}
-      {extraDepts.map((deptName) => (
-        <div key={deptName}>{renderDeptContent(deptName)}</div>
-      ))}
+      {/* Extra departments */}
+      <div className="flex flex-col gap-3 px-4">
+        {extraDepts.map((deptName) => (
+          <div key={deptName}>{renderDeptContent(deptName)}</div>
+        ))}
+      </div>
 
       <EditProductDialog
         product={editProduct}
@@ -259,7 +262,7 @@ export function PantryCheckView({
               למחוק את "{deleteTarget?.product_name}"? לא ניתן לבטל פעולה זו.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-2">
+          <AlertDialogFooter className="flex-row-reverse gap-2 px-4">
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={() => { if (deleteTarget) onDeleteProduct(deleteTarget.id); setDeleteTarget(null); }}
@@ -271,31 +274,33 @@ export function PantryCheckView({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Rename department dialog */}
       <Dialog open={!!renameDept} onOpenChange={(o) => { if (!o) setRenameDept(null); }}>
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>עריכת שם מחלקה</DialogTitle>
           </DialogHeader>
-          <Input
-            value={renameDept?.newName || ""}
-            onChange={(e) => setRenameDept((prev) => prev ? { ...prev, newName: e.target.value } : null)}
-            placeholder="שם חדש למחלקה"
-          />
-          <DialogFooter className="flex-row-reverse gap-2">
-            <Button
-              onClick={() => {
-                if (renameDept && renameDept.newName.trim() && renameDept.newName !== renameDept.oldName) {
-                  onRenameDepartment(renameDept.oldName, renameDept.newName.trim());
-                }
-                setRenameDept(null);
-              }}
-              disabled={!renameDept?.newName.trim()}
-            >
-              שמור
-            </Button>
-            <Button variant="outline" onClick={() => setRenameDept(null)}>ביטול</Button>
-          </DialogFooter>
+          <div className="p-4 space-y-4">
+            <Input
+              value={renameDept?.newName || ""}
+              onChange={(e) => setRenameDept((prev) => prev ? { ...prev, newName: e.target.value } : null)}
+              placeholder="שם חדש למחלקה"
+              className="text-right"
+            />
+            <div className="flex flex-row-reverse gap-2">
+              <Button
+                onClick={() => {
+                  if (renameDept && renameDept.newName.trim() && renameDept.newName !== renameDept.oldName) {
+                    onRenameDepartment(renameDept.oldName, renameDept.newName.trim());
+                  }
+                  setRenameDept(null);
+                }}
+                disabled={!renameDept?.newName.trim()}
+              >
+                שמור
+              </Button>
+              <Button variant="outline" onClick={() => setRenameDept(null)}>ביטול</Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
