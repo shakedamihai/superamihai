@@ -28,13 +28,7 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
   const lactoseFree = isLactoseFree(p.product_name);
 
   return (
-    <div 
-      ref={setNodeRef} 
-      style={style} 
-      className={`flex items-center w-full bg-card rounded-lg px-2 py-3 border select-none ${
-        lactoseFree ? "border-sky-400 bg-sky-50/50" : "border-border"
-      }`}
-    >
+    <div ref={setNodeRef} style={style} className={`flex items-center w-full bg-card rounded-lg px-1.5 py-2 border ${lactoseFree ? "border-sky-400 bg-sky-50/50" : "border-border"}`}>
       <button
         {...attributes}
         {...listeners}
@@ -44,46 +38,24 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
         <GripVertical className="h-5 w-5" />
       </button>
 
-      <div className="flex-1 min-w-0 mx-1 flex flex-col justify-center">
-        <div className="font-bold truncate text-sm flex items-center gap-1.5">
-          {/* סדר התצוגה המתוקן */}
-          <span className="text-primary">{p.current_stock || 0} {unit}</span>
-          <span className="truncate text-foreground font-medium">{p.product_name}</span>
-          {lactoseFree && (
-            <span className="text-[9px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold shrink-0">
-              ללא לקטוז
-            </span>
-          )}
+      <div className="flex-1 min-w-0 mx-1 flex flex-col justify-center select-none">
+        <div className="font-medium truncate text-xs flex items-center gap-1">
+          <span className="truncate">{p.product_name}</span>
+          {lactoseFree && <span className="text-[8px] bg-sky-100 text-sky-700 px-1 py-0.5 rounded font-bold shrink-0">ללא לקטוז</span>}
         </div>
-        <div className="text-[10px] text-muted-foreground">
-          בסיס: {p.base_quantity} {unit} | חסר: {toBuy} {unit}
+        <div className="text-[10px] text-muted-foreground truncate">
+          בסיס: {p.base_quantity} | חסר: {toBuy}
         </div>
       </div>
 
-      <div className="flex items-center gap-1 shrink-0 ml-auto">
-        <button onClick={() => onEdit(p)} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-primary/10">
-          <Pencil className="h-4 w-4" />
-        </button>
-        <button onClick={() => onDelete(p)} className="w-8 h-8 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-destructive/10">
-          <Trash2 className="h-4 w-4" />
-        </button>
-        <div className="w-px h-6 bg-border mx-0.5" />
+      <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+        <button onClick={(e) => { e.preventDefault(); onEdit(p); }} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+        <button onClick={(e) => { e.preventDefault(); onDelete(p); }} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground"><Trash2 className="h-3.5 w-3.5" /></button>
+        <div className="w-px h-5 bg-border mx-0.5" />
         <div className="flex items-center bg-muted/50 rounded-lg p-0.5">
-          <button 
-            onClick={() => onUpdateStock(p.id, Math.max(0, (p.current_stock || 0) - step))} 
-            className="w-8 h-8 rounded-md bg-background flex items-center justify-center shadow-sm active:scale-95"
-          >
-            <Minus className="h-4 w-4" />
-          </button>
-          <span className="w-8 text-center font-bold text-sm tabular-nums">
-            {p.current_stock || 0}
-          </span>
-          <button 
-            onClick={() => onUpdateStock(p.id, (p.current_stock || 0) + step)} 
-            className="w-8 h-8 rounded-md bg-background flex items-center justify-center shadow-sm active:scale-95"
-          >
-            <Plus className="h-4 w-4" />
-          </button>
+          <button onClick={() => onUpdateStock(p.id, Math.max(0, (p.current_stock || 0) - step))} className="w-8 h-8 rounded-md bg-background flex items-center justify-center"><Minus className="h-4 w-4" /></button>
+          <span className="w-7 text-center font-bold text-sm">{p.current_stock || 0}</span>
+          <button onClick={() => onUpdateStock(p.id, (p.current_stock || 0) + step)} className="w-8 h-8 rounded-md bg-background flex items-center justify-center"><Plus className="h-4 w-4" /></button>
         </div>
       </div>
     </div>
