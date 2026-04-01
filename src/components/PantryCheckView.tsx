@@ -73,6 +73,7 @@ function SortableDepartmentItem({
     transition,
     opacity: isDragging ? 0.6 : 1,
     zIndex: isDragging ? 50 : undefined,
+    touchAction: 'none' // חשוב: מונע מהדפדפן להפריע לגרירה
   };
 
   return (
@@ -81,10 +82,10 @@ function SortableDepartmentItem({
         <button
           {...attributes}
           {...listeners}
-          className="touch-none w-10 h-12 flex items-center justify-center bg-muted rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-grab active:cursor-grabbing shrink-0 select-none"
+          className="w-10 h-12 flex items-center justify-center bg-muted rounded-lg text-muted-foreground hover:text-primary shrink-0 select-none"
           style={{ touchAction: 'none' }}
         >
-          <GripVertical className="h-5 w-5" />
+          <GripVertical className="h-6 w-6" />
         </button>
         <div className="flex-1 overflow-hidden">{children}</div>
       </div>
@@ -111,10 +112,10 @@ export function PantryCheckView({
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [renameDept, setRenameDept] = useState<{ oldName: string; newName: string } | null>(null);
 
-  // חיישנים משופרים: ביטלנו את הדיליי הארוך והוספנו הגנה על טקסט
+  // חיישנים משודרגים: Long Press של 250ms עם סובלנות לתנועה קלה
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 100, tolerance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 10 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 15 } })
   );
 
   const recurringByDept = Object.entries(productsByDepartment).reduce(
@@ -161,7 +162,7 @@ export function PantryCheckView({
             e.stopPropagation();
             setRenameDept({ oldName: deptName, newName: deptName });
           }}
-          className="w-11 h-11 rounded-lg border bg-card flex items-center justify-center text-muted-foreground hover:text-primary hover:border-primary/50 transition-all shrink-0"
+          className="w-11 h-11 rounded-lg border bg-card flex items-center justify-center text-muted-foreground shrink-0"
         >
           <Pencil className="h-4 w-4" />
         </button>
@@ -172,10 +173,6 @@ export function PantryCheckView({
   return (
     <div className="w-full flex flex-col items-center py-4 overflow-x-hidden min-h-[80vh] select-none">
       <div className="w-full max-w-[calc(100vw-32px)] space-y-2">
-        <p className="text-xs text-muted-foreground text-center mb-4 px-6">
-          לחצו על ה-⠿ כדי לסדר את המחלקות.
-        </p>
-
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -197,15 +194,19 @@ export function PantryCheckView({
                   >
                     {renderDeptHeader(dept.name)}
                     <CollapsibleContent className="mt-2 space-y-2 px-1 pb-2">
-                       {recurringByDept[dept.name]?.map((p) => (
-                          <SortableProductRow
-                            key={p.id}
-                            product={p}
-                            onUpdateStock={onUpdateStock}
-                            onEdit={setEditProduct}
-                            onDelete={setDeleteTarget}
-                          />
-                        ))}
+                       <SortableContext items={recurringByDept[dept.name]?.map(p => p.id) || []} strategy={verticalListSortingStrategy}>
+                         <div className="flex flex-col gap-2">
+                           {recurringByDept[dept.name]?.map((p) => (
+                              <SortableProductRow
+                                key={p.id}
+                                product={p}
+                                onUpdateStock={onUpdateStock}
+                                onEdit={setEditProduct}
+                                onDelete={setDeleteTarget}
+                              />
+                            ))}
+                         </div>
+                       </SortableContext>
                     </CollapsibleContent>
                   </Collapsible>
                 </SortableDepartmentItem>
@@ -213,16 +214,9 @@ export function PantryCheckView({
             </div>
           </SortableContext>
         </DndContext>
-
-        {extraDepts.map((deptName) => (
-          <div key={deptName} className="px-10 opacity-80">
-             <div className="py-2 border-t mt-2">
-               {renderDeptHeader(deptName)}
-             </div>
-          </div>
-        ))}
       </div>
 
+      {/* Dialogs remain for renaming etc */}
       <Dialog open={!!renameDept} onOpenChange={(o) => { if (!o) setRenameDept(null); }}>
         <DialogContent className="max-w-[90vw] rounded-2xl p-6">
           <DialogHeader>
@@ -232,7 +226,6 @@ export function PantryCheckView({
             <Input
               value={renameDept?.newName || ""}
               onChange={(e) => setRenameDept((prev) => prev ? { ...prev, newName: e.target.value } : null)}
-              placeholder="הכניסו שם חדש..."
               className="text-right h-12 text-lg"
               autoFocus
             />
@@ -241,7 +234,7 @@ export function PantryCheckView({
             <Button
               className="flex-1 h-12 text-lg"
               onClick={() => {
-                if (renameDept && renameDept.newName.trim() && renameDept.newName !== renameDept.oldName) {
+                if (renameDept && renameDept.newName.trim()) {
                   onRenameDepartment(renameDept.oldName, renameDept.newName.trim());
                 }
                 setRenameDept(null);
