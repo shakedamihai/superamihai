@@ -20,12 +20,11 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
     transition,
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 50 : undefined,
-    // הוסר touchAction: 'none' מכאן כדי לאפשר גלילה
   };
 
   const unit = p.unit || "יחידות";
   const step = unit === "קילו" ? 0.5 : unit === "גרם" ? 100 : 1;
-  const toBuy = Math.max(0, p.base_quantity - p.current_stock);
+  const toBuy = Math.max(0, p.base_quantity - (p.current_stock || 0));
   const lactoseFree = isLactoseFree(p.product_name);
 
   return (
@@ -34,27 +33,29 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
         {...attributes}
         {...listeners}
         className="w-8 h-10 flex items-center justify-center text-muted-foreground shrink-0 touch-none"
-        style={{ touchAction: 'none' }} // רק פה הנעילה קיימת
+        style={{ touchAction: 'none' }}
       >
         <GripVertical className="h-5 w-5" />
       </button>
 
-      <div className="flex-1 min-w-0 mx-1 flex flex-col justify-center">
+      <div className="flex-1 min-w-0 mx-1 flex flex-col justify-center select-none">
         <div className="font-medium truncate text-xs flex items-center gap-1">
           <span className="truncate">{p.product_name}</span>
           {lactoseFree && <span className="text-[8px] bg-sky-100 text-sky-700 px-1 py-0.5 rounded font-bold shrink-0">ללא לקטוז</span>}
         </div>
-        <div className="text-[10px] text-muted-foreground">בסיס: {p.base_quantity} | חסר: {toBuy}</div>
+        <div className="text-[10px] text-muted-foreground truncate">
+          בסיס: {p.base_quantity} | חסר: {toBuy}
+        </div>
       </div>
 
       <div className="flex items-center gap-0.5 shrink-0 ml-auto">
-        <button onClick={() => onEdit(p)} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground"><Pencil className="h-3.5 w-3.5" /></button>
-        <button onClick={() => onDelete(p)} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground"><Trash2 className="h-3.5 w-3.5" /></button>
+        <button onClick={(e) => { e.preventDefault(); onEdit(p); }} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground"><Pencil className="h-3.5 w-3.5" /></button>
+        <button onClick={(e) => { e.preventDefault(); onDelete(p); }} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground"><Trash2 className="h-3.5 w-3.5" /></button>
         <div className="w-px h-5 bg-border mx-0.5" />
         <div className="flex items-center bg-muted/50 rounded-lg p-0.5">
-          <button onClick={() => onUpdateStock(p.id, Math.max(0, p.current_stock - step))} className="w-8 h-8 rounded-md bg-background flex items-center justify-center"><Minus className="h-4 w-4" /></button>
-          <span className="w-7 text-center font-bold text-sm">{p.current_stock}</span>
-          <button onClick={() => onUpdateStock(p.id, p.current_stock + step)} className="w-8 h-8 rounded-md bg-background flex items-center justify-center"><Plus className="h-4 w-4" /></button>
+          <button onClick={() => onUpdateStock(p.id, Math.max(0, (p.current_stock || 0) - step))} className="w-8 h-8 rounded-md bg-background flex items-center justify-center"><Minus className="h-4 w-4" /></button>
+          <span className="w-7 text-center font-bold text-sm">{p.current_stock || 0}</span>
+          <button onClick={() => onUpdateStock(p.id, (p.current_stock || 0) + step)} className="w-8 h-8 rounded-md bg-background flex items-center justify-center"><Plus className="h-4 w-4" /></button>
         </div>
       </div>
     </div>
