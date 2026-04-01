@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Zap } from "lucide-react";
 import { DepartmentCombobox } from "./DepartmentCombobox";
-import { getDepartmentUnit } from "@/hooks/useDepartments";
+import { getDepartmentUnit, autoCategorize } from "@/hooks/useDepartments";
 
 interface AddProductViewProps {
   onAdd: (product: {
