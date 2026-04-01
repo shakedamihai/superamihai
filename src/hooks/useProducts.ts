@@ -125,19 +125,20 @@ export function useProducts() {
     onError: () => toast.error("שגיאה בשינוי סדר"),
   });
 
-  const finishShopping = useMutation({
-    mutationFn: async () => {
-      const toBuy = products.filter(
-        (p) => !p.is_one_time && p.base_quantity - p.current_stock > 0
-      );
-      for (const p of toBuy) {
+  const finishChecked = useMutation({
+    mutationFn: async (checkedIds: Set<string>) => {
+      const checkedProducts = products.filter((p) => checkedIds.has(p.id));
+      // For non-one-time checked items, reset stock to base
+      const toReset = checkedProducts.filter((p) => !p.is_one_time);
+      for (const p of toReset) {
         const { error } = await supabase
           .from("products")
           .update({ current_stock: p.base_quantity })
           .eq("id", p.id);
         if (error) throw error;
       }
-      const oneTimeIds = products.filter((p) => p.is_one_time).map((p) => p.id);
+      // Delete one-time checked items
+      const oneTimeIds = checkedProducts.filter((p) => p.is_one_time).map((p) => p.id);
       if (oneTimeIds.length > 0) {
         const { error } = await supabase.from("products").delete().in("id", oneTimeIds);
         if (error) throw error;
@@ -145,7 +146,7 @@ export function useProducts() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("הקניות הושלמו! המלאי עודכן");
+      toast.success("המוצרים שנקנו עודכנו!");
     },
     onError: () => toast.error("שגיאה בעדכון"),
   });
@@ -188,7 +189,7 @@ export function useProducts() {
     updateStock,
     deleteProduct,
     reorderProducts,
-    finishShopping,
+    finishChecked,
     copyListAsText,
   };
 }

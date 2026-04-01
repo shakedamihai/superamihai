@@ -21,7 +21,7 @@ const Index = () => {
     updateStock,
     deleteProduct,
     reorderProducts,
-    finishShopping,
+    finishChecked,
     copyListAsText,
   } = useProducts();
 
@@ -49,23 +49,23 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
+    <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
+      <header className="shrink-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <ShoppingBasket className="h-6 w-6 text-primary" />
           <h1 className="text-xl font-bold">{titles[activeTab]}</h1>
         </div>
       </header>
 
-      <main className="max-w-lg mx-auto px-4 py-4 pb-24">
+      <main className="flex-1 overflow-y-auto max-w-lg mx-auto w-full px-4 py-4">
         {activeTab === "shopping" && (
           <ShoppingListView
             shoppingByDepartment={shoppingByDepartment}
             shoppingList={shoppingList}
             onCopyList={copyListAsText}
-            onFinishShopping={() => finishShopping.mutate()}
+            onFinishChecked={(checkedIds) => finishChecked.mutate(checkedIds)}
             onDeleteProduct={(id) => deleteProduct.mutate(id)}
-            isFinishing={finishShopping.isPending}
+            isFinishing={finishChecked.isPending}
           />
         )}
         {activeTab === "pantry" && (
@@ -92,11 +92,13 @@ const Index = () => {
         )}
       </main>
 
-      <BottomNav
-        active={activeTab}
-        onChange={setActiveTab}
-        shoppingCount={shoppingList.length}
-      />
+      <div className="shrink-0">
+        <BottomNav
+          active={activeTab}
+          onChange={setActiveTab}
+          shoppingCount={shoppingList.length}
+        />
+      </div>
     </div>
   );
 };

@@ -21,6 +21,25 @@ export function getDepartmentUnit(dept: string): { unit: string; step: number; m
   return { unit: "יחידות", step: 1, min: 1 };
 }
 
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  "מקרר": ["חלב", "גבינה", "יוגורט", "קוטג'", "שמנת", "ביצים", "טופו", "חמאה", "שוקו", "לבן"],
+  "ירקות": ["עגבני", "מלפפון", "בצל", "תפוח אדמה", "גזר", "פלפל", "חסה", "כרוב", "ברוקולי", "קישוא", "חציל", "אבוקדו"],
+  "פירות": ["תפוח", "בננה", "תפוז", "אשכולית", "ענב", "אבטיח", "מלון", "נקטרינה", "אפרסק", "שזיף", "מנגו", "פירות"],
+  "מוצרי יבש": ["אורז", "פסטה", "ספגטי", "רסק", "תירס", "טונה", "שמן", "גרנולה", "טחינה", "קמח", "סוכר", "מלח", "שימורים", "קורנפלקס"],
+  "מאפייה": ["לחם", "לחמני", "פית", "חלה", "באגט", "עוגה", "קרואסון"],
+  "קצביה": ["עוף", "בשר", "כרעיים", "שוקיים", "סטייק", "נקניק", "הודו", "שניצל", "קבב", "המבורגר"],
+  "ניקיון": ["סבון", "אקונומיק", "נייר", "שקית", "ספוג", "מגב", "מרכך", "כביסה", "ניקוי"],
+  "פארם": ["שמפו", "מברשת", "משחת", "דאודורנט", "קרם", "מגבון"],
+};
+
+export function autoCategorize(productName: string): string {
+  const name = productName.toLowerCase();
+  for (const [dept, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some((kw) => name.includes(kw))) return dept;
+  }
+  return "כללי";
+}
+
 export function isLactoseFree(productName: string): boolean {
   return productName.includes("ללא לקטוז") || productName.includes("לקטוז");
 }

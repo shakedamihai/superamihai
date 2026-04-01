@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Plus, Zap } from "lucide-react";
 import { DepartmentCombobox } from "./DepartmentCombobox";
-import { getDepartmentUnit } from "@/hooks/useDepartments";
+import { getDepartmentUnit, autoCategorize } from "@/hooks/useDepartments";
 
 interface AddProductViewProps {
   onAdd: (product: {
@@ -46,9 +46,10 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickName.trim()) return;
+    const category = autoCategorize(quickName.trim());
     onAdd({
       product_name: quickName.trim(),
-      department: "כללי",
+      department: category,
       base_quantity: 1,
       current_stock: 0,
       is_one_time: true,
