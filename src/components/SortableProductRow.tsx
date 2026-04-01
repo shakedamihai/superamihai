@@ -37,21 +37,20 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center w-full max-w-full bg-card rounded-lg px-1.5 py-2 border overflow-hidden ${
+      className={`flex items-center w-full max-w-full bg-card rounded-lg px-1.5 py-2 border overflow-hidden select-none ${
         lactoseFree ? "border-sky-400 bg-sky-50/50 dark:bg-sky-950/20" : "border-border"
       }`}
     >
-      {/* ידית גרירה - צמצמנו רוחב */}
       <button
         {...attributes}
         {...listeners}
-        className="touch-none w-6 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing shrink-0"
+        className="touch-none w-6 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing shrink-0 select-none"
+        style={{ touchAction: 'none' }}
       >
         <GripVertical className="h-3.5 w-3.5" />
       </button>
 
-      {/* טקסט המוצר - הוספנו flex-1 ו-min-w-0 כדי שיצטמצם כשצריך */}
-      <div className="flex-1 min-w-0 mx-1 flex flex-col justify-center">
+      <div className="flex-1 min-w-0 mx-1 flex flex-col justify-center select-none">
         <div className="font-medium truncate text-xs sm:text-sm flex items-center gap-1">
           <span className="truncate">{p.product_name}</span>
           {lactoseFree && (
@@ -65,8 +64,7 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
         </div>
       </div>
 
-      {/* כפתורי פעולה - הפכנו אותם ליותר קטנים וצפופים */}
-      <div className="flex items-center gap-0.5 shrink-0 ml-auto">
+      <div className="flex items-center gap-0.5 shrink-0 ml-auto select-none">
         <button
           onClick={() => onEdit(p)}
           className="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:bg-primary/10 transition-colors"
@@ -82,7 +80,6 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
         
         <div className="w-px h-5 bg-border mx-0.5" />
 
-        {/* בקרת כמות - צמצמנו רוחב של המספר והכפתורים */}
         <div className="flex items-center bg-muted/50 rounded-lg p-0.5">
           <button
             onClick={() => onUpdateStock(p.id, Math.max(0, p.current_stock - step))}
