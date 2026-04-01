@@ -35,6 +35,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -58,7 +59,6 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
-// רכיב מחלקה שמתכווץ בזמן גרירה
 function SortableDepartmentItem({
   dept,
   children,
@@ -72,13 +72,13 @@ function SortableDepartmentItem({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
-    opacity: isDragging ? 0.9 : 1,
+    opacity: isDragging ? 0.8 : 1,
     zIndex: isDragging ? 100 : undefined,
   };
 
   return (
-    <div ref={setNodeRef} style={style} className={`w-full flex justify-center mb-3 select-none`}>
-      <div className={`w-full max-w-[calc(100vw-32px)] flex items-start gap-2 ${isDragging ? 'h-[52px] overflow-hidden shadow-lg border-2 border-primary/20 rounded-xl' : ''}`}>
+    <div ref={setNodeRef} style={style} className="w-full flex justify-center mb-4">
+      <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
         <button
           {...attributes}
           {...listeners}
@@ -87,9 +87,7 @@ function SortableDepartmentItem({
         >
           <GripVertical className="h-6 w-6" />
         </button>
-        <div className="flex-1 overflow-hidden">
-          {children}
-        </div>
+        <div className="flex-1 overflow-hidden">{children}</div>
       </div>
     </div>
   );
@@ -111,16 +109,16 @@ export function PantryCheckView({
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [renameDept, setRenameDept] = useState<{ oldName: string; newName: string } | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 10 } })
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } })
   );
 
   const recurringByDept = Object.entries(productsByDepartment || {}).reduce(
     (acc, [dept, items]) => {
-      const itemsArray = items || [];
-      const recurring = itemsArray.filter((p) => !p.is_one_time);
+      const recurring = (items || []).filter((p) => !p.is_one_time);
       if (recurring.length > 0) acc[dept] = recurring;
       return acc;
     },
@@ -131,7 +129,12 @@ export function PantryCheckView({
     .filter((d) => recurringByDept[d.name])
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
-  const handleDeptDragEnd = (event: DragEndEvent) => {
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const oldIndex = orderedDepts.findIndex((d) => d.id === active.id);
@@ -142,29 +145,16 @@ export function PantryCheckView({
     }
   };
 
-  const handleProductDragEnd = (dept: string) => (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    const items = recurringByDept[dept];
-    if (!items) return;
-    const oldIndex = items.findIndex((p) => p.id === active.id);
-    const newIndex = items.findIndex((p) => p.id === over.id);
-    if (oldIndex !== -1 && newIndex !== -1) {
-      const reordered = arrayMove(items, oldIndex, newIndex);
-      onReorderProducts(reordered.map((p, i) => ({ id: p.id, sort_order: i })));
-    }
-  };
-
   return (
-    <div className="w-full flex flex-col items-center py-4 min-h-screen">
+    <div className="w-full flex flex-col items-center py-4 min-h-screen bg-background">
       <div className="w-full max-w-[calc(100vw-32px)] space-y-2">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDeptDragEnd}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <SortableContext items={orderedDepts.map(d => d.id)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col">
               {orderedDepts.map((dept) => (
                 <SortableDepartmentItem key={dept.id} dept={dept}>
                   <Collapsible 
-                    open={openDepts[dept.name] !== false} 
+                    open={activeId === dept.id ? false : (openDepts[dept.name] !== false)} 
                     onOpenChange={(open) => setOpenDepts(prev => ({ ...prev, [dept.name]: open }))}
                   >
                     <div className="flex items-center gap-2">
@@ -172,15 +162,26 @@ export function PantryCheckView({
                         <span>{dept.name} ({recurringByDept[dept.name]?.length || 0})</span>
                         <ChevronDown className={`h-4 w-4 transition-transform ${openDepts[dept.name] !== false ? "rotate-180" : ""}`} />
                       </CollapsibleTrigger>
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); setRenameDept({ oldName: dept.name, newName: dept.name }); }} 
-                        className="w-11 h-11 flex items-center justify-center border rounded-lg bg-card shadow-sm shrink-0"
-                      >
+                      <button onClick={(e) => { e.stopPropagation(); setRenameDept({ oldName: dept.name, newName: dept.name }); }} className="p-3 border rounded-lg bg-card">
                         <Pencil className="h-4 w-4" />
                       </button>
                     </div>
-                    <CollapsibleContent className="mt-2 space-y-2 pb-4">
-                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleProductDragEnd(dept.name)}>
-                        <SortableContext items={recurringByDept[dept.name]?.map(p => p.id) || []} strategy={verticalListSortingStrategy}>
-                          <div className="flex flex-col gap-2">
-                            {recurringByDept[dept.name]?.map((p) => (
+                    <CollapsibleContent className="mt-2 space-y-2 pb-4 px-1">
+                        {recurringByDept[dept.name]?.map((p) => (
+                          <SortableProductRow key={p.id} product={p} onUpdateStock={onUpdateStock} onEdit={setEditProduct} onDelete={setDeleteTarget} />
+                        ))}
+                    </CollapsibleContent>
+                  </Collapsible>
+                </SortableDepartmentItem>
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
+      </div>
+
+      <EditProductDialog product={editProduct} open={!!editProduct} onClose={() => setEditProduct(null)} onSave={onUpdateProduct} departmentNames={departmentNames} onAddDepartment={onAddDepartment} />
+      
+      <Dialog open={!!renameDept} onOpenChange={(o) => !o && setRenameDept(null)}>
+        <DialogContent className="max-w-[90vw] rounded-2xl">
+          <DialogHeader><DialogTitle className="text-right">עריכת מחלקה</DialogTitle></DialogHeader>
+          <div className="
