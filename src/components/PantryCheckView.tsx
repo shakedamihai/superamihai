@@ -58,7 +58,6 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
-// רכיב ידית גרירה משודרג למחלקה
 function SortableDepartmentItem({
   dept,
   children,
@@ -77,14 +76,13 @@ function SortableDepartmentItem({
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="w-full flex justify-center mb-4">
+    <div ref={setNodeRef} style={style} className="w-full flex justify-center mb-4 select-none">
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
-        {/* ידית גרירה גדולה וברורה בצד ימין */}
         <button
           {...attributes}
           {...listeners}
-          className="touch-none w-10 h-12 flex items-center justify-center bg-muted rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-grab active:cursor-grabbing shrink-0"
-          title="גרור לשינוי סדר המחלקה"
+          className="touch-none w-10 h-12 flex items-center justify-center bg-muted rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 cursor-grab active:cursor-grabbing shrink-0 select-none"
+          style={{ touchAction: 'none' }}
         >
           <GripVertical className="h-5 w-5" />
         </button>
@@ -113,9 +111,10 @@ export function PantryCheckView({
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [renameDept, setRenameDept] = useState<{ oldName: string; newName: string } | null>(null);
 
+  // חיישנים משופרים: ביטלנו את הדיליי הארוך והוספנו הגנה על טקסט
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 100, tolerance: 5 } })
   );
 
   const recurringByDept = Object.entries(productsByDepartment).reduce(
@@ -127,7 +126,6 @@ export function PantryCheckView({
     {} as Record<string, Product[]>
   );
 
-  // סינון מחלקות שיש בהן מוצרים
   const orderedDepts = [...departments]
     .filter((d) => recurringByDept[d.name])
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
@@ -149,7 +147,7 @@ export function PantryCheckView({
   const renderDeptHeader = (deptName: string) => {
     const items = recurringByDept[deptName];
     return (
-      <div className="flex items-center gap-1.5 w-full">
+      <div className="flex items-center gap-1.5 w-full select-none">
         <CollapsibleTrigger className={`flex-1 flex items-center justify-between px-4 py-3 rounded-lg border font-bold shadow-sm ${getDepartmentColor(deptName)}`}>
           <div className="flex items-center gap-2">
             <span>{deptName}</span>
@@ -157,8 +155,6 @@ export function PantryCheckView({
           </div>
           <ChevronDown className={`h-4 w-4 transition-transform ${openDepts[deptName] !== false ? "rotate-180" : ""}`} />
         </CollapsibleTrigger>
-        
-        {/* כפתור עריכה נפרד וברור */}
         <button
           onClick={(e) => {
             e.preventDefault();
@@ -174,10 +170,10 @@ export function PantryCheckView({
   };
 
   return (
-    <div className="w-full flex flex-col items-center py-4 overflow-x-hidden min-h-[80vh]">
+    <div className="w-full flex flex-col items-center py-4 overflow-x-hidden min-h-[80vh] select-none">
       <div className="w-full max-w-[calc(100vw-32px)] space-y-2">
         <p className="text-xs text-muted-foreground text-center mb-4 px-6">
-          לחצו על ה-⠿ כדי לסדר את המחלקות, או על העיפרון כדי לשנות שם.
+          לחצו על ה-⠿ כדי לסדר את המחלקות.
         </p>
 
         <DndContext
@@ -218,7 +214,6 @@ export function PantryCheckView({
           </SortableContext>
         </DndContext>
 
-        {/* מחלקות "כלליות" או כאלו שלא רשומות בטבלת המחלקות */}
         {extraDepts.map((deptName) => (
           <div key={deptName} className="px-10 opacity-80">
              <div className="py-2 border-t mt-2">
@@ -228,14 +223,12 @@ export function PantryCheckView({
         ))}
       </div>
 
-      {/* Dialog עריכת שם מחלקה - משופר */}
       <Dialog open={!!renameDept} onOpenChange={(o) => { if (!o) setRenameDept(null); }}>
         <DialogContent className="max-w-[90vw] rounded-2xl p-6">
           <DialogHeader>
             <DialogTitle className="text-right">שינוי שם מחלקה</DialogTitle>
           </DialogHeader>
           <div className="py-4 space-y-4">
-            <label className="text-sm text-muted-foreground block text-right">שם נוכחי: {renameDept?.oldName}</label>
             <Input
               value={renameDept?.newName || ""}
               onChange={(e) => setRenameDept((prev) => prev ? { ...prev, newName: e.target.value } : null)}
@@ -253,7 +246,6 @@ export function PantryCheckView({
                 }
                 setRenameDept(null);
               }}
-              disabled={!renameDept?.newName.trim() || renameDept?.newName === renameDept?.oldName}
             >
               עדכן שם
             </Button>
