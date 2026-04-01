@@ -33,7 +33,7 @@ export function ShoppingListView({
   shoppingByDepartment,
   shoppingList,
   onCopyList,
-  onFinishShopping,
+  onFinishChecked,
   onDeleteProduct,
   isFinishing,
 }: ShoppingListViewProps) {

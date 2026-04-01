@@ -92,11 +92,13 @@ const Index = () => {
         )}
       </main>
 
-      <BottomNav
-        active={activeTab}
-        onChange={setActiveTab}
-        shoppingCount={shoppingList.length}
-      />
+      <div className="shrink-0">
+        <BottomNav
+          active={activeTab}
+          onChange={setActiveTab}
+          shoppingCount={shoppingList.length}
+        />
+      </div>
     </div>
   );
 };
