@@ -35,6 +35,7 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -59,7 +60,9 @@ interface PantryCheckViewProps {
 }
 
 function SortableDepartmentItem({ dept, children }: { dept: Department; children: React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: dept.id });
+  // שימוש ב-as any כדי למנוע שגיאות טיפוס שעלולות לגרום לקריסה
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: dept.id } as any);
+  
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
@@ -100,6 +103,9 @@ export function PantryCheckView({
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [renameDept, setRenameDept] = useState<{ oldName: string; newName: string } | null>(null);
+  
+  // מנגנון הבטיחות: מעקב אחרי המחלקה שנגררת כרגע
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -116,11 +122,19 @@ export function PantryCheckView({
     .filter((d) => recurringByDept[d.name])
     .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
 
+  // פונקציה שמופעלת ברגע שמתחילה גרירה
+  const handleDeptDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
   const handleDeptDragEnd = (event: DragEndEvent) => {
+    setActiveId(null); // איפוס מיידי למניעת באגים בתצוגה
     const { active, over } = event;
     if (!over || active.id === over.id) return;
+    
     const oldIndex = orderedDepts.findIndex((d) => d.id === active.id);
     const newIndex = orderedDepts.findIndex((d) => d.id === over.id);
+    
     if (oldIndex !== -1 && newIndex !== -1) {
       const reordered = arrayMove(orderedDepts, oldIndex, newIndex);
       onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
@@ -143,12 +157,21 @@ export function PantryCheckView({
   return (
     <div className="w-full flex flex-col items-center py-4 min-h-screen">
       <div className="w-full max-w-[calc(100vw-32px)] space-y-4">
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDeptDragEnd}>
+        <DndContext 
+          sensors={sensors} 
+          collisionDetection={closestCenter} 
+          onDragStart={handleDeptDragStart}
+          onDragEnd={handleDeptDragEnd}
+        >
           <SortableContext items={orderedDepts.map(d => d.id)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col">
               {orderedDepts.map((dept) => (
                 <SortableDepartmentItem key={dept.id} dept={dept}>
-                  <Collapsible open={openDepts[dept.name] !== false} onOpenChange={(open) => setOpenDepts(prev => ({ ...prev, [dept.name]: open }))}>
+                  <Collapsible 
+                    /* לוגיקת כיווץ בטוחה: אם המחלקה נגררת, היא תמיד סגורה */
+                    open={activeId === dept.id ? false : (openDepts[dept.name] !== false)} 
+                    onOpenChange={(open) => setOpenDepts(prev => ({ ...prev, [dept.name]: open }))}
+                  >
                     <div className="flex items-center gap-2">
                       <CollapsibleTrigger className={`flex-1 flex items-center justify-between px-4 py-3 rounded-lg border font-bold ${getDepartmentColor(dept.name)}`}>
                         <span>{dept.name} ({recurringByDept[dept.name]?.length || 0})</span>
