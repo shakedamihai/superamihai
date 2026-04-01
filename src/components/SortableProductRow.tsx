@@ -28,7 +28,9 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
     zIndex: isDragging ? 50 : undefined,
   };
 
-  const { unit, step, min } = getDepartmentUnit(p.department);
+  const unit = p.unit || "יחידות";
+  const step = unit === "קילו" ? 0.5 : unit === "גרם" ? 100 : 1;
+  const minVal = step;
   const toBuy = Math.max(0, p.base_quantity - p.current_stock);
   const lactoseFree = isLactoseFree(p.product_name);
 
