@@ -173,8 +173,7 @@ export function useProducts() {
   const copyListAsText = () => {
     const lines = shoppingList.map((p) => {
       const qty = p.is_one_time ? 1 : p.base_quantity - p.current_stock;
-      const { unit } = getDepartmentUnit(p.department);
-      return `${qty} ${unit} ${p.product_name}`;
+      return `${qty} ${p.unit} ${p.product_name}`;
     });
     navigator.clipboard.writeText(lines.join(", "));
     toast.success("הרשימה הועתקה!");
