@@ -49,7 +49,7 @@ const Index = () => {
   };
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-background overflow-hidden">
+    <div className="h-[100dvh] flex flex-col bg-background overflow-hidden" dir="rtl">
       <header className="shrink-0 z-40 bg-background/80 backdrop-blur-lg border-b border-border">
         <div className="max-w-lg mx-auto px-4 py-3 flex items-center gap-3">
           <ShoppingBasket className="h-6 w-6 text-primary" />
