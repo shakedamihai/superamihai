@@ -2,7 +2,7 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { Minus, Plus, Pencil, Trash2, GripVertical } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
-import { getDepartmentUnit, isLactoseFree } from "@/hooks/useDepartments";
+import { isLactoseFree } from "@/hooks/useDepartments";
 
 interface SortableProductRowProps {
   product: Product;
