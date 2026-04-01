@@ -14,6 +14,7 @@ export type Product = {
   created_at: string;
   sort_order: number;
   updated_at: string;
+  unit: string;
 };
 
 export const getDepartmentColor = (dept: string) => {
