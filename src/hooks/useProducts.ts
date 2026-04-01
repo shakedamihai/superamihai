@@ -71,6 +71,7 @@ export function useProducts() {
       base_quantity: number;
       current_stock?: number;
       is_one_time?: boolean;
+      unit?: string;
     }) => {
       const { error } = await supabase.from("products").insert(product);
       if (error) throw error;
