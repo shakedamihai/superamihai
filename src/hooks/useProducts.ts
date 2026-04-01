@@ -189,7 +189,7 @@ export function useProducts() {
     updateStock,
     deleteProduct,
     reorderProducts,
-    finishShopping,
+    finishChecked,
     copyListAsText,
   };
 }

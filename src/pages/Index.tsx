@@ -63,9 +63,9 @@ const Index = () => {
             shoppingByDepartment={shoppingByDepartment}
             shoppingList={shoppingList}
             onCopyList={copyListAsText}
-            onFinishShopping={() => finishShopping.mutate()}
+            onFinishChecked={(checkedIds) => finishChecked.mutate(checkedIds)}
             onDeleteProduct={(id) => deleteProduct.mutate(id)}
-            isFinishing={finishShopping.isPending}
+            isFinishing={finishChecked.isPending}
           />
         )}
         {activeTab === "pantry" && (
