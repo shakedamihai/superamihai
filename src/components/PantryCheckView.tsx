@@ -1,32 +1,28 @@
+import { DragStartEvent } from '@dnd-kit/core';
 import React, { useState } from 'react';
-import Collapsible from 'react-collapsible';
 
 const PantryCheckView = () => {
-    const [activeId, setActiveId] = useState(null);
+    const [activeId, setActiveId] = useState<string | null>(null);
 
-    const handleDragStart = (id) => {
-        setActiveId(id);
+    const handleDeptDragStart = (event: DragStartEvent) => {
+        setActiveId(event.active.id);
     };
 
-    const handleDragEnd = () => {
+    const handleDeptDragEnd = (event: any) => {
+        // Reset activeId to null at the start
         setActiveId(null);
+        // ...other existing logic
     };
 
     return (
-        <div>
-            {/* Assuming departments is an array of your department data */}
-            {departments.map(department => (
-                <Collapsible
-                    key={department.id}
-                    open={activeId === department.id}
-                    onDragStart={() => handleDragStart(department.id)}
-                    onDragEnd={handleDragEnd}
-                >
-                    <div>{department.name}</div>
-                    {/* Other department content here */}
-                </Collapsible>
-            ))}
-        </div>
+        <DndContext onDragStart={handleDeptDragStart}>
+            {/* other components and logic */}
+            <Collapsible open={activeId === dept.id ? false : openDepts[dept.name] !== false}> 
+                {/* Collapsible content */}
+            </Collapsible>
+            <ChevronDown className={activeId ? 'active' : ''} />
+            {/* other components and logic */}
+        </DndContext>
     );
 };
 
