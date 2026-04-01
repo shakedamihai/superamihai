@@ -21,7 +21,7 @@ const Index = () => {
     updateStock,
     deleteProduct,
     reorderProducts,
-    finishShopping,
+    finishChecked,
     copyListAsText,
   } = useProducts();
 
