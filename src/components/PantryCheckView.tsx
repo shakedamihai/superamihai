@@ -184,4 +184,26 @@ export function PantryCheckView({
       <Dialog open={!!renameDept} onOpenChange={(o) => !o && setRenameDept(null)}>
         <DialogContent className="max-w-[90vw] rounded-2xl">
           <DialogHeader><DialogTitle className="text-right">עריכת מחלקה</DialogTitle></DialogHeader>
-          <div className="
+          <div className="py-4"><Input value={renameDept?.newName || ""} onChange={(e) => setRenameDept(prev => prev ? { ...prev, newName: e.target.value } : null)} className="text-right h-12" autoFocus /></div>
+          <DialogFooter className="flex-row-reverse gap-3">
+            <Button className="h-12 flex-1" onClick={() => { if (renameDept?.newName.trim()) onRenameDepartment(renameDept.oldName, renameDept.newName.trim()); setRenameDept(null); }}>שמור</Button>
+            <Button variant="outline" className="h-12 flex-1" onClick={() => setRenameDept(null)}>ביטול</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <AlertDialogContent className="rounded-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-right">מחיקת מוצר</AlertDialogTitle>
+            <AlertDialogDescription className="text-right">למחוק את "{deleteTarget?.product_name}"? לא ניתן לבטל.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-2">
+            <AlertDialogAction className="bg-destructive" onClick={() => { if (deleteTarget) onDeleteProduct(deleteTarget.id); setDeleteTarget(null); }}>מחק</AlertDialogAction>
+            <AlertDialogCancel>ביטול</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
