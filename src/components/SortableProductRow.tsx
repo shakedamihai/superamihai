@@ -26,6 +26,7 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
     transition,
     opacity: isDragging ? 0.5 : 1,
     zIndex: isDragging ? 50 : undefined,
+    touchAction: 'none' // חשוב: נועל את הגלילה של הדפדפן בזמן גרירה
   };
 
   const unit = p.unit || "יחידות";
@@ -44,14 +45,14 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
       <button
         {...attributes}
         {...listeners}
-        className="touch-none w-6 h-8 flex items-center justify-center text-muted-foreground hover:text-foreground cursor-grab active:cursor-grabbing shrink-0 select-none"
+        className="w-8 h-10 flex items-center justify-center text-muted-foreground shrink-0 select-none"
         style={{ touchAction: 'none' }}
       >
-        <GripVertical className="h-3.5 w-3.5" />
+        <GripVertical className="h-5 w-5" />
       </button>
 
       <div className="flex-1 min-w-0 mx-1 flex flex-col justify-center select-none">
-        <div className="font-medium truncate text-xs sm:text-sm flex items-center gap-1">
+        <div className="font-medium truncate text-xs flex items-center gap-1">
           <span className="truncate">{p.product_name}</span>
           {lactoseFree && (
             <span className="text-[8px] bg-sky-100 text-sky-700 px-1 py-0.5 rounded font-bold shrink-0">
@@ -66,35 +67,35 @@ export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete
 
       <div className="flex items-center gap-0.5 shrink-0 ml-auto select-none">
         <button
-          onClick={() => onEdit(p)}
-          className="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:bg-primary/10 transition-colors"
+          onClick={(e) => { e.preventDefault(); onEdit(p); }}
+          className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-primary/10 transition-colors"
         >
-          <Pencil className="h-3 w-3" />
+          <Pencil className="h-3.5 w-3.5" />
         </button>
         <button
-          onClick={() => onDelete(p)}
-          className="w-6 h-6 rounded-md flex items-center justify-center text-muted-foreground hover:bg-destructive/10 transition-colors"
+          onClick={(e) => { e.preventDefault(); onDelete(p); }}
+          className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground hover:bg-destructive/10 transition-colors"
         >
-          <Trash2 className="h-3 w-3" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
         
         <div className="w-px h-5 bg-border mx-0.5" />
 
         <div className="flex items-center bg-muted/50 rounded-lg p-0.5">
           <button
-            onClick={() => onUpdateStock(p.id, Math.max(0, p.current_stock - step))}
-            className="w-7 h-7 rounded-md bg-background flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+            onClick={(e) => { e.preventDefault(); onUpdateStock(p.id, Math.max(0, p.current_stock - step)); }}
+            className="w-8 h-8 rounded-md bg-background flex items-center justify-center shadow-sm active:scale-90 transition-transform"
           >
-            <Minus className="h-3.5 w-3.5" />
+            <Minus className="h-4 w-4" />
           </button>
           <span className="w-7 text-center font-bold text-sm tabular-nums">
             {p.current_stock}
           </span>
           <button
-            onClick={() => onUpdateStock(p.id, p.current_stock + step)}
-            className="w-7 h-7 rounded-md bg-background flex items-center justify-center shadow-sm active:scale-90 transition-transform"
+            onClick={(e) => { e.preventDefault(); onUpdateStock(p.id, p.current_stock + step); }}
+            className="w-8 h-8 rounded-md bg-background flex items-center justify-center shadow-sm active:scale-90 transition-transform"
           >
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="h-4 w-4" />
           </button>
         </div>
       </div>
