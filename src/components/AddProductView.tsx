@@ -46,9 +46,10 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
   const handleQuickAdd = (e: React.FormEvent) => {
     e.preventDefault();
     if (!quickName.trim()) return;
+    const category = autoCategorize(quickName.trim());
     onAdd({
       product_name: quickName.trim(),
-      department: "כללי",
+      department: category,
       base_quantity: 1,
       current_stock: 0,
       is_one_time: true,
