@@ -57,7 +57,7 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="flex-1 overflow-y-auto max-w-lg mx-auto w-full px-4 py-4">
+      <main className="flex-1 overflow-y-auto overflow-x-hidden max-w-lg mx-auto w-full px-4 py-4">
         {activeTab === "shopping" && (
           <ShoppingListView
             shoppingByDepartment={shoppingByDepartment}
