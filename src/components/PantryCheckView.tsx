@@ -1,19 +1,52 @@
 import { 
   ChevronDown, Pencil, GripVertical, Search, X, Trash2, Settings2, Lock,
-  Beef, Carrot, Milk, Snowflake, Sparkles, Wheat, CupSoda, Baby, ShoppingBag, 
-  Apple, Fish, Package, Citrus, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy
+  Beef, Carrot, Milk, Snowflake, Sparkles, 
+  Wheat, CupSoda, Baby, ShoppingBag, Apple, Fish, Package, Citrus, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy
 } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { Department } from "@/hooks/useDepartments";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { EditProductDialog } from "./EditProductDialog";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, MeasuringStrategy } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from "@dnd-kit/sortable";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  TouchSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+  DragStartEvent,
+  MeasuringStrategy,
+} from "@nd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableProductRow } from "./SortableProductRow";
 
@@ -39,30 +72,30 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "כללי": { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-400" },
 };
 
-
 const SYSTEM_UNITS = ["יחידות", 'ק"ג', "ליטרים", "חבילות", "מארזים", "בקבוקים", "פחיות", "גלילים", "שפופרות", "טבליות", "קפסולות", "זוגות", "גרם"];
 
 function SortableDepartmentItem({ dept, disabled, children }: { dept: Department; disabled?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `dept-${dept.id}`, disabled });
-  const style = { transform: CSS.Transform.toString(transform), transition: transition || 'transform 200ms ease', opacity: isDragging ? 0.6 : 1, zIndex: isDragging ? 50 : 1, position: 'relative' as const };
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1, zIndex: isDragging ? 50 : 1, position: 'relative' as const };
   return (
-    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center mb-4 touch-none scroll-mt-6">
+    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center mb-5 scroll-mt-6">
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
-        <button {...attributes} {...listeners} className="w-10 h-[64px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 touch-none shadow-sm"><GripVertical className="h-5 w-5 opacity-40" /></button>
+        <button {...attributes} {...listeners} className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 touch-none shadow-sm"><GripVertical className="h-5 w-5 opacity-50" /></button>
         <div className="flex-1 overflow-hidden">{children}</div>
       </div>
     </div>
   );
 }
 
-export function PantryCheckView({ productsByDepartment, departments, onUpdateStock, onUpdateProduct, onDeleteProduct, onReorderProducts, onRenameDepartment, onReorderDepartments, departmentNames, onAddDepartment }: any) {
+export function PantryCheckView({ productsByDepartment, departments, onUpdateStock, onUpdateProduct, onDeleteProduct, onReorderDepartments, departmentNames, onAddDepartment }: any) {
   const [searchQuery, setSearchQuery] = useState("");
   const [openDepts, setOpenDepts] = useState<Record<string, boolean>>({});
-  const [editProduct, setEditProduct] = useState<any>(null);
-  const [deleteTarget, setDeleteTarget] = useState<any>(null);
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [manageUnitsOpen, setManageUnitsOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isReordering, setIsReordering] = useState(false);
+  const reorderTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const isSearching = searchQuery.length > 0;
   const isDraggingDept = activeId?.startsWith("dept-");
@@ -79,16 +112,19 @@ export function PantryCheckView({ productsByDepartment, departments, onUpdateSto
     return [...departments].filter(d => baseRecurringByDept[d.name]).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [departments, baseRecurringByDept]);
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
-    setActiveId(null);
-    if (!over || active.id === over.id) return;
-    const activeStr = String(active.id);
-    const overStr = String(over.id);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } }));
 
-    if (activeStr.startsWith("dept-")) {
-      const aId = activeStr.replace("dept-", "");
-      const oId = overStr.replace("dept-", "");
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setIsReordering(true);
+    if (reorderTimeout.current) clearTimeout(reorderTimeout.current);
+    reorderTimeout.current = setTimeout(() => setIsReordering(false), 2000);
+    
+    if (String(active.id).startsWith("dept-")) {
+      const aId = String(active.id).replace("dept-", "");
+      const oId = String(over.id).replace("dept-", "");
       const oldIdx = sortedDepts.findIndex(d => d.id === aId);
       const newIdx = sortedDepts.findIndex(d => d.id === oId);
       if (oldIdx !== -1 && newIdx !== -1) {
@@ -108,43 +144,61 @@ export function PantryCheckView({ productsByDepartment, departments, onUpdateSto
   return (
     <div className={`w-full flex flex-col items-center py-4 min-h-screen bg-slate-50/50 transition-all ${isDraggingDept ? 'pb-[100vh]' : 'pb-12'}`}>
       <div className="w-full max-w-[calc(100vw-32px)] space-y-6">
-        <div className="relative bg-white border border-slate-200 shadow-sm rounded-[2rem] p-6">
+        <div className="relative bg-white border border-slate-200 shadow-sm rounded-[2rem] p-6 font-sans">
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Search className="absolute right-3 top-3.5 h-5 w-5 text-slate-400" />
               <Input placeholder="חיפוש במלאי..." className="w-full pr-10 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              {isSearching && <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><X className="h-5 w-5" /></button>}
             </div>
-            <Button variant="outline" size="icon" className="h-[64px] w-[64px] rounded-xl border-slate-200" onClick={() => setManageUnitsOpen(true)}><Settings2 className="h-6 w-6 text-slate-500" /></Button>
+            <Button variant="outline" size="icon" className="h-[60px] w-[60px] rounded-xl border-slate-200" onClick={() => setManageUnitsOpen(true)}><Settings2 className="h-6 w-6 text-slate-500" /></Button>
           </div>
         </div>
 
-        <DndContext sensors={useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }), useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 6 } }))} collisionDetection={closestCenter} onDragStart={(e) => setActiveId(e.active.id as string)} onDragEnd={handleDragEnd} measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}>
-          <SortableContext items={displayDepts.map(d => `dept-${d.id}`)} strategy={verticalListSortingStrategy}>
-            <div className="flex flex-col gap-4">
-              {displayDepts.map((dept) => {
-                const config = DEPT_CONFIG[dept.name] || { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-200" };
-                return (
-                  <SortableDepartmentItem key={dept.id} dept={dept} disabled={activeId !== null && !isDraggingDept}>
-                    <Collapsible open={isSearching ? true : (isDraggingDept ? false : openDepts[dept.name] !== false)} onOpenChange={(o) => setOpenDepts({ ...openDepts, [dept.name]: o })} className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${config.border}`}>
-                      <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-5 font-bold outline-none group">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-slate-50"><config.icon className={`h-5 w-5 ${config.color}`} /></div>
-                          <span className="text-slate-800 text-lg">{dept.name}</span>
-                        </div>
-                        <ChevronDown className={`h-5 w-5 text-slate-300 transition-transform ${openDepts[dept.name] !== false || isSearching ? "rotate-180" : ""}`} />
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="px-3 pb-4 space-y-2 border-t border-slate-50 pt-4">
-                        {(baseRecurringByDept[dept.name] || []).map((p: any) => <SortableProductRow key={p.id} product={p} onEdit={() => setEditProduct(p)} onDelete={() => setDeleteTarget(p)} onUpdateStock={onUpdateStock} />)}
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </SortableDepartmentItem>
-                );
-              })}
-            </div>
-          </SortableContext>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(e) => setActiveId(e.active.id as string)} onDragEnd={handleDragEnd} measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}>
+          <div className="space-y-4">
+            {displayDepts.map((dept) => {
+              const config = DEPT_CONFIG[dept.name] || DEPT_CONFIG["כללי"];
+              const items = baseRecurringByDept[dept.name] || [];
+              const displayItems = searchQuery && !dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ? items.filter((p:any) => p.product_name?.toLowerCase().includes(searchQuery.toLowerCase())) : items;
+
+              return (
+                <SortableDepartmentItem key={dept.id} dept={dept} disabled={activeId !== null && !isDraggingDept}>
+                  <Collapsible open={isSearching ? true : (isDraggingDept ? false : openDepts[dept.name] !== false)} onOpenChange={(o) => setOpenDepts({ ...openDepts, [dept.name]: o })} className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${config.border}`}>
+                    <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-4 font-bold outline-none">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-slate-50"><config.icon className={`h-5 w-5 ${config.color}`} /></div>
+                        <span className="text-lg text-slate-800">{dept.name}</span>
+                        <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{displayItems.length}</span>
+                      </div>
+                      <ChevronDown className={`h-5 w-5 text-slate-300 transition-transform ${openDepts[dept.name] !== false || isSearching ? "rotate-180" : ""}`} />
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="px-3 pb-3 space-y-2 mt-1 border-t border-slate-50 pt-3">
+                      <SortableContext items={displayItems.map((p:any) => p.id)} strategy={verticalListSortingStrategy}>
+                        {displayItems.map((p:any) => (
+                          <SortableProductRow key={p.id} product={p} onEdit={() => setEditProduct(p)} onDelete={() => setDeleteTarget(p)} onUpdateStock={onUpdateStock} />
+                        ))}
+                      </SortableContext>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </SortableDepartmentItem>
+              );
+            })}
+          </div>
         </DndContext>
       </div>
+
       <EditProductDialog product={editProduct} open={!!editProduct} onClose={() => setEditProduct(null)} onSave={onUpdateProduct} departmentNames={departmentNames} onAddDepartment={onAddDepartment} />
+      
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="rounded-3xl p-6 font-sans">
+          <AlertDialogHeader><AlertDialogTitle className="text-right text-xl">למחוק את המוצר?</AlertDialogTitle></AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
+            <AlertDialogAction className="rounded-xl px-6 py-5 bg-red-500 hover:bg-red-600 text-white font-bold" onClick={() => { if (deleteTarget) onDeleteProduct(deleteTarget.id); setDeleteTarget(null); }}>מחק מוצר</AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl px-6 py-5 font-medium">ביטול</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
