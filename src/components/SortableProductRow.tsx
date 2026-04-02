@@ -1,62 +1,96 @@
+import { GripVertical, Pencil, Trash2 } from "lucide-react";
+import { Product } from "@/hooks/useProducts";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { Minus, Plus, Pencil, Trash2, GripVertical } from "lucide-react";
-import { Product } from "@/hooks/useProducts";
 import { isLactoseFree } from "@/hooks/useDepartments";
 
 interface SortableProductRowProps {
   product: Product;
+  onEdit: () => void;
+  onDelete: () => void;
   onUpdateStock: (id: string, stock: number) => void;
-  onEdit: (p: Product) => void;
-  onDelete: (p: Product) => void;
 }
 
-export function SortableProductRow({ product: p, onUpdateStock, onEdit, onDelete }: SortableProductRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: p.id });
+export function SortableProductRow({
+  product,
+  onEdit,
+  onDelete,
+  onUpdateStock,
+}: SortableProductRowProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: product.id });
 
   const style = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    zIndex: isDragging ? 50 : undefined,
   };
 
-  const unit = p.unit || "יחידות";
-  const step = unit === "קילו" ? 0.5 : unit === "גרם" ? 100 : 1;
-  const toBuy = Math.max(0, p.base_quantity - (p.current_stock || 0));
-  const lactoseFree = isLactoseFree(p.product_name);
+  const lactoseFree = isLactoseFree(product.product_name);
+
+  // לוגיקת עיבוד היחידות למלאי
+  let baseUnitDisplay = product.unit?.includes("קילו") ? "ק\"ג" : (product.unit || "יחידות");
+  if (product.base_quantity === 1 && (baseUnitDisplay === "יחידות" || !product.unit)) {
+    baseUnitDisplay = "יחידה";
+  }
 
   return (
-    <div ref={setNodeRef} style={style} className={`flex items-center w-full bg-card rounded-lg px-1.5 py-2 border ${lactoseFree ? "border-sky-400 bg-sky-50/50" : "border-border"}`}>
-      <button
-        {...attributes}
-        {...listeners}
-        className="w-8 h-10 flex items-center justify-center text-muted-foreground shrink-0 touch-none"
-        style={{ touchAction: 'none' }}
-      >
-        <GripVertical className="h-5 w-5" />
-      </button>
-
-      <div className="flex-1 min-w-0 mx-1 flex flex-col justify-center select-none">
-        <div className="font-medium truncate text-xs flex items-center gap-1">
-          <span className="truncate">{p.product_name}</span>
-          {lactoseFree && <span className="text-[8px] bg-sky-100 text-sky-700 px-1 py-0.5 rounded font-bold shrink-0">ללא לקטוז</span>}
-        </div>
-        <div className="text-[10px] text-muted-foreground truncate">
-          בסיס: {p.base_quantity} | חסר: {toBuy}
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center justify-between p-3 bg-card border rounded-xl shadow-sm group ${
+        lactoseFree ? "border-sky-100 bg-sky-50/20" : ""
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <button
+          {...attributes}
+          {...listeners}
+          className="p-1 text-muted-foreground/40 hover:text-muted-foreground shrink-0 touch-none"
+        >
+          <GripVertical className="h-4 w-4" />
+        </button>
+        <div className="flex flex-col text-right">
+          <span className="font-bold text-foreground">
+            {product.product_name}
+          </span>
+          <div className="flex items-center gap-2 mt-0.5">
+            <span className="text-xs text-muted-foreground">
+              מלאי: {product.current_stock} / {product.base_quantity} {baseUnitDisplay}
+            </span>
+            {lactoseFree && (
+              <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">
+                ללא לקטוז
+              </span>
+            )}
+            {product.is_one_time && (
+              <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
+                מוצר חד-פעמי
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-0.5 shrink-0 ml-auto">
-        <button onClick={(e) => { e.preventDefault(); onEdit(p); }} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground"><Pencil className="h-3.5 w-3.5" /></button>
-        <button onClick={(e) => { e.preventDefault(); onDelete(p); }} className="w-7 h-7 rounded-md flex items-center justify-center text-muted-foreground"><Trash2 className="h-3.5 w-3.5" /></button>
-        <div className="w-px h-5 bg-border mx-0.5" />
-        <div className="flex items-center bg-muted/50 rounded-lg p-0.5">
-          <button onClick={() => onUpdateStock(p.id, Math.max(0, (p.current_stock || 0) - step))} className="w-8 h-8 rounded-md bg-background flex items-center justify-center"><Minus className="h-4 w-4" /></button>
-          <span className="w-7 text-center font-bold text-sm">{p.current_stock || 0}</span>
-          <button onClick={() => onUpdateStock(p.id, (p.current_stock || 0) + step)} className="w-8 h-8 rounded-md bg-background flex items-center justify-center"><Plus className="h-4 w-4" /></button>
-        </div>
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onEdit}
+          className="p-2 text-muted-foreground/40 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          onClick={onDelete}
+          className="p-2 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/5 rounded-lg transition-colors"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
       </div>
     </div>
   );
