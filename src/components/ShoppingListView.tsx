@@ -44,12 +44,11 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "תינוקות": { icon: Baby, color: "text-teal-500", border: "border-r-teal-500" },
   "פיצוחים ופירות יבשים": { icon: Citrus, color: "text-orange-700", border: "border-r-orange-700" },
   "מעדניה": { icon: ChefHat, color: "text-violet-600", border: "border-r-violet-600" },
-  "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
-};
-const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> = {
-  // ... שאר המחלקות ...
+  "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" }, 
   "כללי": { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-400" },
 };
+
+
 // פונקציית עזר ליחידות מידה - המרה ללשון רבים וקיצורים
 const formatUnit = (unit?: string) => {
   if (!unit || unit.trim() === "") return "יחידות";
