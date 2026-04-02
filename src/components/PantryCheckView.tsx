@@ -95,14 +95,19 @@ const getDeptIcon = (name: string) => {
   return ShoppingBag;
 };
 
-function SortableDepartmentItem({ dept, disabled, children }: { dept: Department; disabled?: boolean; children: React.ReactNode }) {
+function SortableDepartmentItem({ dept, disabled, isDragOverlay, children }: { dept: Department; disabled?: boolean; isDragOverlay?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
     id: `dept-${dept.id}`,
     disabled: disabled
   });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.8 : 1, zIndex: isDragging ? 50 : undefined };
+  const style = { 
+    transform: CSS.Transform.toString(transform), 
+    transition, 
+    opacity: isDragging ? 0.3 : 1, 
+    zIndex: isDragOverlay ? 50 : undefined,
+  };
   return (
-    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center mb-5 transition-transform">
+    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className={`w-full flex justify-center mb-5 transition-transform ${isDragOverlay ? 'shadow-xl' : ''}`}>
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
         <button {...attributes} {...listeners} className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 touch-none shadow-sm"><GripVertical className="h-5 w-5 opacity-50" /></button>
         <div className="flex-1 overflow-hidden">{children}</div>
