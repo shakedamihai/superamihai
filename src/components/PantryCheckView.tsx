@@ -59,9 +59,15 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
+// קומפוננטה בטוחה למחלקה נגררת
 function SortableDepartmentItem({ dept, children }: { dept: Department; children: React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: dept.id } as any);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
+    id: dept?.id || "fallback-id" 
+  });
   
+  // הגנה למניעת קריסה אם מחלקה לא תקינה
+  if (!dept || !dept.id) return null;
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: transition || 'transform 150ms cubic-bezier(0.25, 1, 0.5, 1)',
@@ -75,7 +81,7 @@ function SortableDepartmentItem({ dept, children }: { dept: Department; children
         <button
           {...attributes}
           {...listeners}
-          className="w-10 h-12 flex items-center justify-center bg-muted rounded-lg text-muted-foreground shrink-0 touch-none"
+          className="w-10 h-12 flex items-center justify-center bg-muted rounded-lg text-muted-foreground shrink-0 touch-none focus:outline-none"
           style={{ touchAction: 'none' }}
         >
           <GripVertical className="h-6 w-6" />
@@ -87,32 +93,94 @@ function SortableDepartmentItem({ dept, children }: { dept: Department; children
 }
 
 export function PantryCheckView({
-  productsByDepartment,
-  departments,
+  productsByDepartment = {}, // הגנה - ערך דיפולטיבי
+  departments = [], // הגנה - ערך דיפולטיבי
   onUpdateStock,
   onUpdateProduct,
   onDeleteProduct,
   onReorderProducts,
   onRenameDepartment,
   onReorderDepartments,
-  departmentNames,
+  departmentNames = [],
   onAddDepartment,
 }: PantryCheckViewProps) {
   
-  // חישוב המידע שמגיע מהשרת
+  // חישוב בטוח של המידע המגיע מהשרת
   const baseRecurringByDept = useMemo(() => {
-    return Object.entries(productsByDepartment || {}).reduce((acc, [dept, items]) => {
-      const recurring = (items || []).filter((p) => !p.is_one_time);
-      if (recurring.length > 0) acc[dept] = recurring;
-      return acc;
-    }, {} as Record<string, Product[]>);
+    try {
+      return Object.entries(productsByDepartment || {}).reduce((acc, [dept, items]) => {
+        const recurring = (items || []).filter((p) => p && !p.is_one_time);
+        if (recurring.length > 0) acc[dept] = recurring;
+        return acc;
+      }, {} as Record<string, Product[]>);
+    } catch (e) {
+      console.error("Error formatting products:", e);
+      return {};
+    }
   }, [productsByDepartment]);
 
   const baseSortedDepts = useMemo(() => {
-    return [...(departments || [])]
-      .filter((d) => baseRecurringByDept[d.name])
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    try {
+      return [...(departments || [])]
+        .filter((d) => d && d.name && baseRecurringByDept[d.name])
+        .sort((a, b) => (a?.sort_order || 0) - (b?.sort_order || 0));
+    } catch (e) {
+      console.error("Error sorting depts:", e);
+      return [];
+    }
   }, [departments, baseRecurringByDept]);
 
-  // סטייט מקומי לעדכונים אופטימיים מיידיים (כדי למנוע את הדיליי בגרירה)
-  const [localDepts, setLocalDepts] = useState
+  // סטייט מקומי לעדכונים אופטימיים (מהירים ללא דיליי)
+  const [localDepts, setLocalDepts] = useState<Department[]>(baseSortedDepts);
+  const [localRecurring, setLocalRecurring] = useState<Record<string, Product[]>>(baseRecurringByDept);
+
+  // סנכרון הסטייט עם השרת בצורה בטוחה
+  useEffect(() => { setLocalDepts(baseSortedDepts); }, [baseSortedDepts]);
+  useEffect(() => { setLocalRecurring(baseRecurringByDept); }, [baseRecurringByDept]);
+
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [openDepts, setOpenDepts] = useState<Record<string, boolean>>({});
+  const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
+  const [renameDept, setRenameDept] = useState<{ oldName: string; newName: string } | null>(null);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => {
+    if (event.active && event.active.id) {
+      setActiveId(event.active.id as string);
+    }
+  };
+
+  // פונקציית סיום גרירה מרכזית ובטוחה
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || !active || active.id === over.id) return;
+
+    // 1. האם זאת מחלקה שנגררת?
+    const isDeptDrag = localDepts.some((d) => d && d.id === active.id);
+
+    if (isDeptDrag) {
+      const oldIndex = localDepts.findIndex((d) => d?.id === active.id);
+      const newIndex = localDepts.findIndex((d) => d?.id === over.id);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reordered = arrayMove(localDepts, oldIndex, newIndex);
+        setLocalDepts(reordered); // עדכון UI אופטימי ומיידי
+        try {
+          onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
+        } catch(e) { console.error("Reorder Dept Error", e); }
+      }
+      return;
+    }
+
+    // 2. אם זאת לא מחלקה, זה כנראה מוצר. נחפש באיזו מחלקה הוא נמצא
+    let foundDeptName: string | null = null;
+    for (const [deptName, items] of Object.entries(localRecurring)) {
+      if (items && items.some(p => p?.id === active.id)) {
+        foundDeptName = deptName;
+        break;
