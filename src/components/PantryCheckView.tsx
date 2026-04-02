@@ -57,37 +57,39 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
+// עיצוב מחדש - כפתור הגרירה מוכנס כעת פנימה כפרופ (renderCard) במקום לעטוף מבחוץ
 function SortableDepartmentItem({ 
-  dept, 
+  id, 
   disabled, 
   onPrepareDrag, 
-  children 
+  renderCard 
 }: { 
-  dept: Department; 
+  id: string; 
   disabled?: boolean; 
   onPrepareDrag: () => void; 
-  children: React.ReactNode 
+  renderCard: (dragHandle: React.ReactNode) => React.ReactNode 
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `dept-${dept.id}`, disabled });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1, zIndex: isDragging ? 0 : 1, position: 'relative' as const };
   
+  // ידית הגרירה שנעביר לתוך הכותרת
+  const dragHandle = (
+    <div 
+      onPointerDown={onPrepareDrag} 
+      onTouchStart={onPrepareDrag}
+      className="touch-none p-2 text-slate-300 hover:text-slate-500 active:text-slate-500 cursor-grab active:cursor-grabbing transition-colors"
+      {...attributes} 
+      {...listeners} 
+    >
+      <GripVertical className="h-5 w-5" />
+    </div>
+  );
+
   return (
-    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center scroll-mt-6">
-      <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
-        <div 
-          onPointerDown={onPrepareDrag} 
-          onTouchStart={onPrepareDrag}
-          className="touch-none"
-        >
-          <button 
-            {...attributes} 
-            {...listeners} 
-            className="w-10 h-[64px] flex items-center justify-center bg-white border border-slate-100 rounded-2xl text-slate-400 shrink-0 shadow-sm active:bg-slate-50 transition-colors cursor-grab active:cursor-grabbing"
-          >
-            <GripVertical className="h-5 w-5 opacity-60" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-hidden">{children}</div>
+    <div id={`${id}-wrapper`} ref={setNodeRef} style={style} className="w-full flex justify-center scroll-mt-6">
+      {/* רוחב מקסימלי שמונע חיתוך, נותן מרווח קל בצדדים */}
+      <div className="w-full max-w-[calc(100vw-20px)] md:max-w-[calc(100vw-32px)]">
+        {renderCard(dragHandle)}
       </div>
     </div>
   );
@@ -155,7 +157,6 @@ export function PantryCheckView({
     }
   }, [sortedDepts, baseRecurringByDept, isDraggingDept, isPreparingDrag]);
 
-  // פונקציות הניהול של היחידות שחזרו למקומן הבטוח
   const handleUpdateUnit = (oldUnit: string, newUnit: string) => {
     if (SYSTEM_UNITS.includes(oldUnit)) return;
     Object.values(productsByDepartment || {}).flat().filter(p => p.unit === oldUnit).forEach(p => {
@@ -180,9 +181,7 @@ export function PantryCheckView({
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 10 } })
   );
 
-  const handleDragStart = (event: DragStartEvent) => { 
-    setActiveId(event.active.id as string); 
-  };
+  const handleDragStart = (event: DragStartEvent) => { setActiveId(event.active.id as string); };
 
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveId(null);
@@ -204,7 +203,6 @@ export function PantryCheckView({
         const reordered = arrayMove(localDepts, oldIdx, newIdx);
         setLocalDepts(reordered);
         onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
-        
         setTimeout(() => {
           document.getElementById(`dept-wrapper-${aId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 150);
@@ -241,7 +239,7 @@ export function PantryCheckView({
 
   return (
     <div className="w-full flex flex-col items-center py-4 min-h-[150vh] bg-slate-50/50 font-sans pb-12">
-      <div className="w-full max-w-[calc(100vw-32px)] space-y-6">
+      <div className="w-full max-w-[calc(100vw-20px)] md:max-w-[calc(100vw-32px)] space-y-6">
         <div className="relative bg-white border border-slate-200 shadow-sm rounded-[2rem] p-6 font-sans">
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -260,38 +258,54 @@ export function PantryCheckView({
                 const config = DEPT_CONFIG[dept.name] || DEPT_CONFIG["כללי"];
                 const items = localRecurring[dept.name] || [];
                 const displayItems = searchQuery && !dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ? items.filter((p) => p.product_name?.toLowerCase().includes(searchQuery.toLowerCase())) : items;
+                const isOpen = isSearching ? true : (forceCollapse ? false : openDepts[dept.name] !== false);
 
                 return (
                   <SortableDepartmentItem 
                     key={dept.id} 
-                    dept={dept} 
+                    id={`dept-${dept.id}`}
                     disabled={activeId !== null && !activeId.startsWith("dept-")}
                     onPrepareDrag={() => setIsPreparingDrag(true)}
-                  >
-                    <Collapsible 
-                      open={isSearching ? true : (forceCollapse ? false : openDepts[dept.name] !== false)} 
-                      onOpenChange={(o) => setOpenDepts({ ...openDepts, [dept.name]: o })} 
-                      className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${config.border}`}
-                    >
-                      <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-4 font-bold outline-none">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-slate-50"><config.icon className={`h-5 w-5 ${config.color}`} /></div>
-                          <span className="text-lg text-slate-800">{dept.name}</span>
-                          <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{displayItems.length}</span>
+                    renderCard={(dragHandle) => (
+                      <Collapsible 
+                        open={isOpen} 
+                        onOpenChange={(o) => setOpenDepts({ ...openDepts, [dept.name]: o })} 
+                        className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${config.border}`}
+                      >
+                        {/* העיצוב החדש והחסכוני במקום: הכפתור מוטמע בפנים! */}
+                        <div className="w-full flex items-center justify-between pl-2 pr-1 py-3 outline-none">
+                          <div className="flex items-center gap-1 flex-1 overflow-hidden">
+                            {dragHandle}
+                            <CollapsibleTrigger asChild>
+                              <div className="flex items-center gap-2 cursor-pointer flex-1 py-1 overflow-hidden">
+                                <div className="p-2 rounded-lg bg-slate-50 shrink-0">
+                                  <config.icon className={`h-5 w-5 ${config.color}`} />
+                                </div>
+                                <span className="text-lg text-slate-800 font-bold truncate">{dept.name}</span>
+                                <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black shrink-0">
+                                  {displayItems.length}
+                                </span>
+                              </div>
+                            </CollapsibleTrigger>
+                          </div>
+                          <CollapsibleTrigger asChild>
+                            <button className="p-3 text-slate-300 shrink-0 outline-none">
+                              <ChevronDown className={`h-5 w-5 transition-transform ${isOpen ? "rotate-180" : ""}`} />
+                            </button>
+                          </CollapsibleTrigger>
                         </div>
-                        <ChevronDown className={`h-5 w-5 text-slate-300 transition-transform ${openDepts[dept.name] !== false || isSearching ? "rotate-180" : ""}`} />
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="px-3 pb-3">
-                        <div className="flex flex-col gap-2 border-t border-slate-50 pt-3">
-                          <SortableContext items={displayItems.map((p) => p.id)} strategy={verticalListSortingStrategy}>
-                            {displayItems.map((p) => (
-                              <SortableProductRow key={p.id} product={p} onEdit={() => setEditProduct(p)} onDelete={() => setDeleteTarget(p)} onUpdateStock={onUpdateStock} />
-                            ))}
-                          </SortableContext>
-                        </div>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </SortableDepartmentItem>
+                        <CollapsibleContent className="px-3 pb-3">
+                          <div className="flex flex-col gap-2 border-t border-slate-50 pt-3">
+                            <SortableContext items={displayItems.map((p) => p.id)} strategy={verticalListSortingStrategy}>
+                              {displayItems.map((p) => (
+                                <SortableProductRow key={p.id} product={p} onEdit={() => setEditProduct(p)} onDelete={() => setDeleteTarget(p)} onUpdateStock={onUpdateStock} />
+                              ))}
+                            </SortableContext>
+                          </div>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    )}
+                  />
                 );
               })}
             </SortableContext>
@@ -300,18 +314,24 @@ export function PantryCheckView({
           <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: "0.4" } } }) }}>
             {activeDept && activeDeptConfig ? (
               <div className="w-full flex justify-center opacity-100 drop-shadow-2xl">
-                <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
-                  <button className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 shadow-sm cursor-grabbing">
-                    <GripVertical className="h-5 w-5 opacity-50" />
-                  </button>
-                  <div className={`flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${activeDeptConfig.border}`}>
-                    <div className="w-full flex items-center justify-between px-4 py-4 font-bold">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-slate-50"><ActiveDeptIcon className={`h-5 w-5 ${activeDeptConfig.color}`} /></div>
-                        <span className="text-lg text-slate-800">{activeDept.name}</span>
-                        <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{activeItemsCount}</span>
+                <div className="w-full max-w-[calc(100vw-20px)] md:max-w-[calc(100vw-32px)]">
+                  <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${activeDeptConfig.border}`}>
+                    <div className="w-full flex items-center justify-between pl-2 pr-1 py-3">
+                      <div className="flex items-center gap-1 flex-1 overflow-hidden">
+                        <div className="p-2 text-slate-300 cursor-grabbing"><GripVertical className="h-5 w-5" /></div>
+                        <div className="flex items-center gap-2 flex-1 overflow-hidden py-1">
+                          <div className="p-2 rounded-lg bg-slate-50 shrink-0">
+                            <ActiveDeptIcon className={`h-5 w-5 ${activeDeptConfig.color}`} />
+                          </div>
+                          <span className="text-lg text-slate-800 font-bold truncate">{activeDept.name}</span>
+                          <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black shrink-0">
+                            {activeItemsCount}
+                          </span>
+                        </div>
                       </div>
-                      <ChevronDown className="h-5 w-5 text-slate-300" />
+                      <div className="p-3 text-slate-300 shrink-0">
+                        <ChevronDown className="h-5 w-5" />
+                      </div>
                     </div>
                   </div>
                 </div>
