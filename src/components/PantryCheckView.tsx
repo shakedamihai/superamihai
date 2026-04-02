@@ -341,6 +341,9 @@ export function PantryCheckView({
             })() : null}
           </DragOverlay>
         </DndContext>
+      </div>
+
+      <Dialog open={manageUnitsOpen} onOpenChange={setManageUnitsOpen}>
         <DialogContent className="max-w-[95vw] sm:max-w-[400px] rounded-[2rem] p-6 font-sans">
           <DialogHeader><DialogTitle className="text-right text-xl font-black">ניהול יחידות מידה</DialogTitle></DialogHeader>
           <div className="py-4 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
