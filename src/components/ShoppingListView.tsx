@@ -55,8 +55,10 @@ const getDeptIcon = (name: string) => {
   if (lower.includes('בשר') || lower.includes('עוף') || lower.includes('קצביה')) return Beef;
   if (lower.includes('דג')) return Fish;
   if (lower.includes('קפוא')) return Snowflake;
-  if (lower.includes('פארם') || lower.includes('נקיון')) return Sparkles;
+  if (lower.includes('פארם') || lower.includes('נקיון') || lower.includes('סבון')) return Sparkles;
   if (lower.includes('מאפי') || lower.includes('לחם')) return Wheat;
+  if (lower.includes('שתי') || lower.includes('משק')) return CupSoda;
+  if (lower.includes('תינוק')) return Baby;
   return ShoppingBag;
 };
 
@@ -74,8 +76,16 @@ export function ShoppingListView({
   );
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
+  const toggleChecked = (id: string) => {
+    setChecked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
   const deptKeys = useMemo(() => Object.keys(shoppingByDepartment).sort(), [shoppingByDepartment]);
-  
   const deptColors = useMemo(() => {
     const mapping: Record<string, typeof COLORS[0]> = {};
     const usedIndices = new Set<number>();
@@ -84,7 +94,6 @@ export function ShoppingListView({
       { keys: ['חלב', 'גבינ', 'מקרר'], idx: 2 }, { keys: ['בשר', 'עוף', 'קצביה'], idx: 0 }, 
       { keys: ['דג'], idx: 5 }, 
     ];
-
     deptKeys.forEach((dept) => {
       const lower = dept.toLowerCase();
       for (const pref of preferences) {
@@ -95,7 +104,6 @@ export function ShoppingListView({
         }
       }
     });
-
     deptKeys.forEach((dept) => {
       if (!mapping[dept]) {
         const availableIndex = COLORS.findIndex((_, i) => !usedIndices.has(i));
@@ -108,7 +116,6 @@ export function ShoppingListView({
 
   const isSearching = searchQuery.length > 0;
   const lowerQuery = searchQuery.toLowerCase();
-  
   const filteredDepts = useMemo(() => {
     if (!searchQuery) return deptKeys;
     return deptKeys.filter(dept => {
@@ -130,9 +137,7 @@ export function ShoppingListView({
   }
 
   return (
-    <div className="space-y-6 pb-24 bg-slate-50 min-h-screen pt-4 px-2 font-sans">
-      
-      {/* --- אזור הניהול הבהיר (לא Sticky) --- */}
+    <div className="space-y-6 pb-24 bg-slate-50 min-h-screen pt-4 px-2">
       <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${
           isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'
       }`}>
@@ -151,7 +156,6 @@ export function ShoppingListView({
               <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><X className="h-5 w-5" /></button>
             )}
           </div>
-
           {!isSearching && (
             <div className="space-y-4 animate-in fade-in duration-300">
               <div className="space-y-2 px-1">
@@ -203,15 +207,23 @@ export function ShoppingListView({
                   <div className="flex items-center gap-3">
                     <Icon className={`h-5 w-5 ${iconClass}`} />
                     <span>{dept}</span>
-                    <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs">{displayItems.length}</span>
+                    <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{displayItems.length}</span>
                   </div>
                   <ChevronDown className={`h-5 w-5 text-slate-300 transition-transform ${openDepts[dept] !== false || isSearching ? "rotate-180" : ""}`} />
                 </CollapsibleTrigger>
                 <CollapsibleContent className="px-3 pb-3 space-y-2 mt-1">
-                  <div className="space-y-2 border-t border-slate-50 pt-3">
+                  <div className="space-y-2 border-t border-border/50 pt-3">
                     {displayItems.map((p) => {
                       const isChecked = checked.has(p.id);
                       const lactoseFree = isLactoseFree(p.product_name);
+                      
+                      // לוגיקת עיבוד היחידות שביקשת
+                      const qty = p.is_one_time ? 1 : Math.max(0, p.base_quantity - p.current_stock);
+                      let unitDisplay = p.unit?.includes("קילו") ? "ק\"ג" : (p.unit || "יחידות");
+                      if (qty === 1 && (unitDisplay === "יחידות" || !p.unit)) {
+                        unitDisplay = "יחידה";
+                      }
+
                       return (
                         <div key={p.id} onClick={() => setChecked(prev => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; })} className={`flex items-center justify-between rounded-xl px-4 py-3.5 border cursor-pointer transition-all ${isChecked ? "bg-muted/40 opacity-50" : lactoseFree ? "bg-sky-50/40 border-sky-100" : "bg-white border-gray-100"}`}>
                           <div className="flex items-center gap-4">
@@ -219,7 +231,9 @@ export function ShoppingListView({
                             <div className="flex flex-col text-right">
                               <span className={`text-[1.05rem] font-medium ${isChecked ? "line-through text-muted-foreground" : ""}`}>{p.product_name}</span>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className={`text-sm ${isChecked ? "text-muted-foreground" : "text-primary font-bold"}`}>{p.is_one_time ? 1 : Math.max(0, p.base_quantity - p.current_stock)} {p.unit || "יחידות"}</span>
+                                <span className={`text-sm ${isChecked ? "text-muted-foreground" : "text-primary font-bold"}`}>
+                                  {qty} {unitDisplay}
+                                </span>
                                 {lactoseFree && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">ללא לקטוז</span>}
                                 {p.is_one_time && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">מוצר חד-פעמי</span>}
                               </div>
