@@ -1,7 +1,8 @@
 import { 
-  Copy, CheckCircle2, ChevronDown, Trash2, Check, Search, X, Zap,
-  Beef, Carrot, Milk, Snowflake, Sparkles, Wheat, CupSoda, Baby, ShoppingBag, 
-  Apple, Fish, Package, Citrus, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy
+  ChevronDown, Pencil, GripVertical, Search, X, Trash2, Settings2, Lock,
+  Beef, Carrot, Milk, Snowflake, Sparkles, 
+  Wheat, CupSoda, Baby, ShoppingBag, Apple, Fish, Package, Citrus, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy,
+  CookingPot, Bean 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,9 +18,9 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "מוצרי חלב ומקרר": { icon: Milk, color: "text-blue-500", border: "border-r-blue-500" },
   "קצביה": { icon: Beef, color: "text-red-500", border: "border-r-red-500" },
   "דגים": { icon: Fish, color: "text-cyan-500", border: "border-r-cyan-500" },
-  "קפואים": { icon: Snowflake, color: "text-indigo-600", border: "border-r-indigo-600" }, // צבע שונה מהדגים
+  "קפואים": { icon: Snowflake, color: "text-indigo-600", border: "border-r-indigo-600" }, // צבע כחול כהה יותר
   "מזווה ושימורים": { icon: Package, color: "text-orange-500", border: "border-r-orange-500" },
-  "תבלינים ואפייה": { icon: Bottle, color: "text-amber-700", border: "border-r-amber-700" }, // איקון של בקבוק/מלחייה
+  "תבלינים ואפייה": { icon: CookingPot, color: "text-amber-700", border: "border-r-amber-700" }, // איקון סיר/אפייה
   "מאפייה ולחם": { icon: Wheat, color: "text-yellow-500", border: "border-r-yellow-500" },
   "חטיפים ומתוקים": { icon: Candy, color: "text-purple-500", border: "border-r-purple-500" },
   "משקאות": { icon: CupSoda, color: "text-indigo-500", border: "border-r-indigo-500" },
@@ -27,7 +28,7 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "חומרי ניקוי": { icon: Droplets, color: "text-slate-500", border: "border-r-slate-500" },
   "חד-פעמי": { icon: UtensilsCrossed, color: "text-rose-400", border: "border-r-rose-400" },
   "תינוקות": { icon: Baby, color: "text-teal-500", border: "border-r-teal-500" },
-  "פיצוחים ופירות יבשים": { icon: Nut, color: "text-yellow-700", border: "border-r-yellow-700" }, // איקון של אגוז/פיסטוק
+  "פיצוחים ופירות יבשים": { icon: Bean, color: "text-yellow-700", border: "border-r-yellow-700" }, // איקון אגוז/גרעין
   "מעדניה": { icon: ChefHat, color: "text-violet-600", border: "border-r-violet-600" },
   "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
   "כללי": { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-400" },
