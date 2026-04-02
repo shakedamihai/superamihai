@@ -62,6 +62,7 @@ const Index = () => {
           <ShoppingListView
             shoppingByDepartment={shoppingByDepartment}
             shoppingList={shoppingList}
+            departmentOrder={departmentNames}
             onCopyList={copyListAsText}
             onFinishChecked={(checkedIds) => finishChecked.mutate(checkedIds)}
             onDeleteProduct={(id) => deleteProduct.mutate(id)}
