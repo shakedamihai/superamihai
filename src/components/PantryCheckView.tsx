@@ -6,7 +6,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { EditProductDialog } from "./EditProductDialog";
 import {
   AlertDialog,
@@ -59,11 +59,11 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
-// הוספנו את המשתנה disabled כדי "לכבות" את המחלקה כשגוררים מוצר
+// קומפוננטת מחלקה עם תמיכה בכיבוי גרירה (למניעת התנגשויות)
 function SortableDepartmentItem({ dept, disabled, children }: { dept: Department; disabled?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
     id: `dept-${dept.id}`,
-    disabled: disabled // מונע התנגשויות גרירה!
+    disabled: disabled
   });
   
   const style = {
@@ -103,7 +103,7 @@ export function PantryCheckView({
   onAddDepartment,
 }: PantryCheckViewProps) {
   
-  // נתוני הבסיס מהשרת
+  // חישוב המידע מהשרת
   const baseRecurringByDept = useMemo(() => {
     return Object.entries(productsByDepartment || {}).reduce((acc, [dept, items]) => {
       const recurring = (items || []).filter((p) => !p.is_one_time);
@@ -118,12 +118,22 @@ export function PantryCheckView({
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [departments, baseRecurringByDept]);
 
-  // סטייט מקומי לעדכון מיידי בלי שום דיליי
+  // סטייט מקומי לעדכון מיידי
   const [localDepts, setLocalDepts] = useState<Department[]>(baseSortedDepts);
   const [localRecurring, setLocalRecurring] = useState<Record<string, Product[]>>(baseRecurringByDept);
 
-  useEffect(() => { setLocalDepts(baseSortedDepts); }, [baseSortedDepts]);
-  useEffect(() => { setLocalRecurring(baseRecurringByDept); }, [baseRecurringByDept]);
+  // מנגנון הנעילה האופטימית - מונע מהשרת לדרוס אותנו ב-2 השניות שאחרי הגרירה
+  const [isReordering, setIsReordering] = useState(false);
+  const reorderTimeout = useRef<NodeJS.Timeout | null>(null);
+
+  // מתעדכן מהשרת *רק* אם אנחנו לא באמצע סידור מחדש
+  useEffect(() => { 
+    if (!isReordering) setLocalDepts(baseSortedDepts); 
+  }, [baseSortedDepts, isReordering]);
+
+  useEffect(() => { 
+    if (!isReordering) setLocalRecurring(baseRecurringByDept); 
+  }, [baseRecurringByDept, isReordering]);
 
   const [activeId, setActiveId] = useState<string | null>(null);
   const [openDepts, setOpenDepts] = useState<Record<string, boolean>>({});
@@ -148,6 +158,13 @@ export function PantryCheckView({
     const activeStr = String(active.id);
     const overStr = String(over.id);
 
+    // הפעלת הנעילה! לא נקשיב לשרת במשך 2 שניות עד שהוא יתעדכן לגמרי
+    setIsReordering(true);
+    if (reorderTimeout.current) clearTimeout(reorderTimeout.current);
+    reorderTimeout.current = setTimeout(() => {
+      setIsReordering(false);
+    }, 2000);
+
     // 1. מחלקה הוזזה
     if (activeStr.startsWith("dept-") && overStr.startsWith("dept-")) {
       const activeDeptId = activeStr.replace("dept-", "");
@@ -158,7 +175,7 @@ export function PantryCheckView({
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const reordered = arrayMove(localDepts, oldIndex, newIndex);
-        setLocalDepts(reordered); // אופטימי - זז מיד!
+        setLocalDepts(reordered); // זז מיד
         try {
           onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
         } catch(e) { console.error("Reorder Dept Error", e); }
@@ -185,7 +202,7 @@ export function PantryCheckView({
         setLocalRecurring((prev) => ({
           ...prev,
           [foundDeptName as string]: reordered,
-        })); // אופטימי - זז מיד!
+        })); // זז מיד
         try {
           onReorderProducts(reordered.map((p, i) => ({ id: p.id, sort_order: i })));
         } catch (e) { console.error("Reorder Product Error", e); }
@@ -193,7 +210,6 @@ export function PantryCheckView({
     }
   };
 
-  // מזהה מה נגרר עכשיו כדי לדעת איך להתנהג
   const isDraggingDept = activeId?.startsWith("dept-") || false;
   const isDraggingProduct = activeId !== null && !isDraggingDept;
 
@@ -217,10 +233,8 @@ export function PantryCheckView({
                 strategy={verticalListSortingStrategy}
               >
                 {localDepts.map((dept) => (
-                  // מכבים את ההתנגשות של המחלקה אם גוררים מוצר
                   <SortableDepartmentItem key={dept.id} dept={dept} disabled={isDraggingProduct}>
                     <Collapsible
-                      // מכווץ את כל המחלקות רק אם גוררים מחלקה!
                       open={isDraggingDept ? false : (openDepts[dept.name] !== false)}
                       onOpenChange={(open) =>
                         setOpenDepts({ ...openDepts, [dept.name]: open })
