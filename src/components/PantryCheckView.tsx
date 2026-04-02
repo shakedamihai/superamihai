@@ -40,7 +40,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SortableProductRow } from "./SortableProductRow";
 
-// --- רשימת היחידות המוגנות (יחידות מערכת) ---
+// --- רשימת היחידות המוגנות (יחידות מערכת שלא ניתן למחוק/לערוך) ---
 const SYSTEM_UNITS = [
   "יחידות", 'ק"ג', "ליטר", "חבילות", "מארזים", 
   "בקבוקים", "פחיות", "גלילים", "שפופרות", 
@@ -60,7 +60,6 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
-// (שאר הפונקציות כמו COLORS ו-getDeptIcon נשארות ללא שינוי...)
 const COLORS = [
   { borderClass: 'border-r-red-500', iconClass: 'text-red-500' },
   { borderClass: 'border-r-green-500', iconClass: 'text-green-500' },
@@ -82,7 +81,7 @@ const getDeptIcon = (name: string) => {
   if (lower.includes('בשר') || lower.includes('עוף') || lower.includes('קצביה')) return Beef;
   if (lower.includes('דג')) return Fish;
   if (lower.includes('קפוא')) return Snowflake;
-  if (lower.includes('פארם') || lower.includes('נקיון')) return Sparkles;
+  if (lower.includes('פארם') || lower.includes('נקיון') || lower.includes('סבון')) return Sparkles;
   if (lower.includes('מאפי') || lower.includes('לחם')) return Wheat;
   return ShoppingBag;
 };
@@ -92,11 +91,24 @@ function SortableDepartmentItem({ dept, disabled, children }: { dept: Department
     id: `dept-${dept.id}`,
     disabled: disabled
   });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.8 : 1, zIndex: isDragging ? 50 : undefined };
+  
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition: transition || 'transform 150ms cubic-bezier(0.25, 1, 0.5, 1)',
+    opacity: isDragging ? 0.8 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
   return (
     <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center mb-5 transition-transform">
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
-        <button {...attributes} {...listeners} className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 touch-none shadow-sm"><GripVertical className="h-5 w-5 opacity-50" /></button>
+        <button
+          {...attributes}
+          {...listeners}
+          className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 touch-none focus:outline-none shadow-sm"
+        >
+          <GripVertical className="h-5 w-5 opacity-50" />
+        </button>
         <div className="flex-1 overflow-hidden">{children}</div>
       </div>
     </div>
@@ -123,14 +135,16 @@ export function PantryCheckView({
   const [isReordering, setIsReordering] = useState(false);
   const reorderTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // סריקה של כל היחידות שקיימות כרגע במוצרים
+  // הגדרת משתנה החיפוש שהיה חסר וגרם לשגיאה
+  const isSearching = searchQuery.length > 0;
+
+  // סריקת יחידות קיימות
   const allUsedUnits = useMemo(() => {
-    const units = new Set<string>(SYSTEM_UNITS); // מתחילים מהיחידות המוגנות
+    const units = new Set<string>(SYSTEM_UNITS);
     Object.values(productsByDepartment).flat().forEach(p => {
       if (p.unit) units.add(p.unit);
     });
     return Array.from(units).sort((a, b) => {
-      // מיון כך שיחידות מערכת יופיעו קודם
       const aIsSys = SYSTEM_UNITS.includes(a);
       const bIsSys = SYSTEM_UNITS.includes(b);
       if (aIsSys && !bIsSys) return -1;
@@ -148,7 +162,9 @@ export function PantryCheckView({
   }, [productsByDepartment]);
 
   const baseSortedDepts = useMemo(() => {
-    return [...(departments || [])].filter((d) => baseRecurringByDept[d.name]).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    return [...(departments || [])]
+      .filter((d) => baseRecurringByDept[d.name])
+      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [departments, baseRecurringByDept]);
 
   const [localDepts, setLocalDepts] = useState<Department[]>(baseSortedDepts);
@@ -181,17 +197,64 @@ export function PantryCheckView({
     return mapping;
   }, [baseSortedDepts]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } }));
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } })
+  );
+
+  const handleDragStart = (event: DragStartEvent) => { setActiveId(event.active.id as string); };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    setActiveId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+
+    setIsReordering(true);
+    if (reorderTimeout.current) clearTimeout(reorderTimeout.current);
+    reorderTimeout.current = setTimeout(() => setIsReordering(false), 2000);
+
+    const activeStr = String(active.id);
+    const overStr = String(over.id);
+
+    if (activeStr.startsWith("dept-") && overStr.startsWith("dept-")) {
+      const activeDeptId = activeStr.replace("dept-", "");
+      const overDeptId = overStr.replace("dept-", "");
+      const oldIndex = localDepts.findIndex((d) => d.id === activeDeptId);
+      const newIndex = localDepts.findIndex((d) => d.id === overDeptId);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reordered = arrayMove(localDepts, oldIndex, newIndex);
+        setLocalDepts(reordered);
+        onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
+      }
+      return;
+    }
+
+    let foundDeptName: string | null = null;
+    for (const [name, items] of Object.entries(localRecurring)) {
+      if (items.some((p) => p.id === activeStr)) { foundDeptName = name; break; }
+    }
+
+    if (foundDeptName && localRecurring[foundDeptName]) {
+      const items = localRecurring[foundDeptName];
+      const oldIndex = items.findIndex((p) => p.id === activeStr);
+      const newIndex = items.findIndex((p) => p.id === overStr);
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        setLocalRecurring(prev => ({ ...prev, [foundDeptName as string]: reordered }));
+        onReorderProducts(reordered.map((p, i) => ({ id: p.id, sort_order: i })));
+      }
+    }
+  };
 
   const handleUpdateUnit = (oldUnit: string, newUnit: string) => {
-    if (SYSTEM_UNITS.includes(oldUnit)) return; // הגנה נוספת בקוד
+    if (SYSTEM_UNITS.includes(oldUnit)) return;
     Object.values(productsByDepartment).flat().filter(p => p.unit === oldUnit).forEach(p => {
       onUpdateProduct({ id: p.id, unit: newUnit });
     });
   };
 
   const handleDeleteUnit = (unitToDelete: string) => {
-    if (SYSTEM_UNITS.includes(unitToDelete)) return; // הגנה נוספת בקוד
+    if (SYSTEM_UNITS.includes(unitToDelete)) return;
     Object.values(productsByDepartment).flat().filter(p => p.unit === unitToDelete).forEach(p => {
       onUpdateProduct({ id: p.id, unit: "יחידות" });
     });
@@ -210,26 +273,31 @@ export function PantryCheckView({
   return (
     <div className="w-full flex flex-col items-center py-4 min-h-screen bg-slate-50/50 font-sans">
       <div className="w-full max-w-[calc(100vw-32px)] space-y-6">
+        
         <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'}`}>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <div className="absolute inset-y-0 right-0 flex items-center pr-4"><Search className="h-5 w-5 text-slate-400" /></div>
-              <Input placeholder="חיפוש פריט או מחלקה..." className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+              <Input
+                placeholder="חיפוש פריט או מחלקה..."
+                className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
               {isSearching && <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><X className="h-5 w-5" /></button>}
             </div>
-            <Button variant="outline" size="icon" className="h-[60px] w-[60px] rounded-xl border-slate-200" onClick={() => setManageUnitsOpen(true)}><Settings2 className="h-6 w-6 text-slate-500" /></Button>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-[60px] w-[60px] rounded-xl border-slate-200"
+              onClick={() => setManageUnitsOpen(true)}
+            >
+              <Settings2 className="h-6 w-6 text-slate-500" />
+            </Button>
           </div>
         </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={(e) => setActiveId(e.active.id as string)} onDragEnd={(e) => {
-          setActiveId(null);
-          const { active, over } = e;
-          if (!over || active.id === over.id) return;
-          setIsReordering(true);
-          if (reorderTimeout.current) clearTimeout(reorderTimeout.current);
-          reorderTimeout.current = setTimeout(() => setIsReordering(false), 2000);
-          // (לוגיקת סידור מחדש נשארת זהה...)
-        }}>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <div className="space-y-4">
             {displayDepts.map((dept) => {
               const Icon = getDeptIcon(dept.name);
@@ -265,7 +333,6 @@ export function PantryCheckView({
         </DndContext>
       </div>
 
-      {/* דיאלוג ניהול יחידות המידה עם הגנה על יחידות מערכת */}
       <Dialog open={manageUnitsOpen} onOpenChange={setManageUnitsOpen}>
         <DialogContent className="max-w-[95vw] sm:max-w-[400px] rounded-[2rem] p-6 font-sans">
           <DialogHeader><DialogTitle className="text-right text-xl font-black">ניהול יחידות מידה</DialogTitle></DialogHeader>
