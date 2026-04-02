@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
 export type Department = {
@@ -49,7 +50,7 @@ export function autoCategorize(productName: string): string {
   for (const [dept, kws] of Object.entries(keywords)) {
     if (kws.some((kw) => name.includes(kw))) return dept;
   }
-  return "כללי"; // ברירת מחדל חזרה ל-"כללי"
+  return "כללי";
 }
 
 export function isLactoseFree(productName: string): boolean {
@@ -72,6 +73,18 @@ export function useDepartments() {
     },
   });
 
+  useEffect(() => {
+    const channel = supabase
+      .channel("departments-realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "departments" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["departments"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
+
   const syncStandardDepartments = useMutation({
     mutationFn: async () => {
       const RENAME_MAP: Record<string, string> = {
@@ -80,7 +93,6 @@ export function useDepartments() {
         "מאפייה": "מאפייה ולחם",
         "ניקיון": "חומרי ניקוי",
         "פארם": "פארם וטואלטיקה"
-        // הסרתי את האיחוד של "כללי" לתוך "מזווה"
       };
 
       const { data: currentDepts } = await supabase.from("departments").select("*");
@@ -119,9 +131,44 @@ export function useDepartments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["departments"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("סנכרון הושלם: 'כללי' הוגדר כברירת מחדל.");
+      toast.success("סנכרון הושלם: המחלקות והמוצרים עודכנו.");
     },
     onError: () => toast.error("שגיאה בסנכרון מחלקות"),
+  });
+
+  const addDepartment = useMutation({
+    mutationFn: async (name: string) => {
+      const { data: maxOrderData } = await supabase.from("departments").select("sort_order").order("sort_order", { ascending: false }).limit(1);
+      const maxOrder = maxOrderData?.[0]?.sort_order ?? -1;
+      const { error } = await supabase.from("departments").insert({ name, sort_order: maxOrder + 1 });
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments"] }),
+  });
+
+  // הנה הפונקציה החסרה שגרמה למסך הלבן!
+  const renameDepartment = useMutation({
+    mutationFn: async ({ oldName, newName }: { oldName: string; newName: string }) => {
+      const { error: deptErr } = await supabase.from("departments").update({ name: newName }).eq("name", oldName);
+      if (deptErr) throw deptErr;
+      const { error: prodErr } = await supabase.from("products").update({ department: newName }).eq("department", oldName);
+      if (prodErr) throw prodErr;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+      toast.success("שם המחלקה עודכן");
+    },
+    onError: () => toast.error("שגיאה בעדכון שם המחלקה"),
+  });
+
+  const reorderDepartments = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      for (const u of updates) {
+        await supabase.from("departments").update({ sort_order: u.sort_order }).eq("id", u.id);
+      }
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments"] }),
   });
 
   return {
@@ -129,21 +176,8 @@ export function useDepartments() {
     departmentNames: departments.map((d) => d.name),
     isLoading,
     syncStandardDepartments,
-    addDepartment: useMutation({
-      mutationFn: async (name: string) => {
-        const { data: maxOrderData } = await supabase.from("departments").select("sort_order").order("sort_order", { ascending: false }).limit(1);
-        const maxOrder = maxOrderData?.[0]?.sort_order ?? -1;
-        await supabase.from("departments").insert({ name, sort_order: maxOrder + 1 });
-      },
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments"] }),
-    }),
-    reorderDepartments: useMutation({
-      mutationFn: async (updates: { id: string; sort_order: number }[]) => {
-        for (const u of updates) {
-          await supabase.from("departments").update({ sort_order: u.sort_order }).eq("id", u.id);
-        }
-      },
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments"] }),
-    }),
+    addDepartment,
+    renameDepartment, // הוחזר!
+    reorderDepartments,
   };
 }
