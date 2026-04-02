@@ -46,6 +46,10 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "מעדניה": { icon: ChefHat, color: "text-violet-600", border: "border-r-violet-600" },
   "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
 };
+const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> = {
+  // ... שאר המחלקות ...
+  "כללי": { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-400" },
+};
 // פונקציית עזר ליחידות מידה - המרה ללשון רבים וקיצורים
 const formatUnit = (unit?: string) => {
   if (!unit || unit.trim() === "") return "יחידות";
