@@ -331,7 +331,7 @@ export function ShoppingListView({
           <AlertDialogHeader>
             <AlertDialogTitle className="text-right">להסיר מרשימת הקניות?</AlertDialogTitle>
             <AlertDialogDescription className="text-right mt-2 font-medium">
-              הכמות החד-פעמית תימחק מהמערכת. המוצר הקבוע יישאר במזווה ויעודכן כ"מלא".
+              הכמות החד-פעמית תימחק מהמערכת. הכמות הקבועה של המוצר תישאר במזווה ותעודכן כקיימת במלאי".
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
