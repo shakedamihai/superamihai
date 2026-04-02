@@ -5,48 +5,18 @@ import {
 } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { Department } from "@/hooks/useDepartments";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { EditProductDialog } from "./EditProductDialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogFooter,
-} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragStartEvent,
-  MeasuringStrategy,
-} from "@dnd-kit/core"; // תוקן: dnd-kit במקום nd-kit
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  arrayMove,
-  useSortable,
-} from "@dnd-kit/sortable";
+  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, 
+  DragEndEvent, DragStartEvent, MeasuringStrategy, DragOverlay, defaultDropAnimationSideEffects
+} from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableProductRow } from "./SortableProductRow";
 
@@ -74,44 +44,23 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
 
 const SYSTEM_UNITS = ["יחידות", 'ק"ג', "ליטרים", "חבילות", "מארזים", "בקבוקים", "פחיות", "גלילים", "שפופרות", "טבליות", "קפסולות", "זוגות", "גרם"];
 
-interface PantryCheckViewProps {
-  productsByDepartment: Record<string, Product[]>;
-  departments: Department[];
-  onUpdateStock: (id: string, stock: number) => void;
-  onUpdateProduct: (updates: { id: string; product_name?: string; department?: string; base_quantity?: number; unit?: string }) => void;
-  onDeleteProduct: (id: string) => void;
-  onReorderProducts: (updates: { id: string; sort_order: number }[]) => void;
-  onRenameDepartment: (oldName: string, newName: string) => void;
-  onReorderDepartments: (updates: { id: string; sort_order: number }[]) => void;
-  departmentNames: string[];
-  onAddDepartment: (name: string) => void;
-}
-
 function SortableDepartmentItem({ dept, disabled, children }: { dept: Department; disabled?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `dept-${dept.id}`, disabled });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1, zIndex: isDragging ? 50 : 1, position: 'relative' as const };
+  // כשהמחלקה נגררת, היא הופכת לשקופה ברשימה כדי לפנות מקום לשכבת הרחפת
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1, zIndex: isDragging ? 0 : 1, position: 'relative' as const };
   return (
     <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center mb-5 scroll-mt-6">
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
-        <button {...attributes} {...listeners} className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 touch-none shadow-sm"><GripVertical className="h-5 w-5 opacity-50" /></button>
+        <button {...attributes} {...listeners} className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 touch-none shadow-sm cursor-grab">
+          <GripVertical className="h-5 w-5 opacity-50" />
+        </button>
         <div className="flex-1 overflow-hidden">{children}</div>
       </div>
     </div>
   );
 }
 
-export function PantryCheckView({ 
-  productsByDepartment, 
-  departments, 
-  onUpdateStock, 
-  onUpdateProduct, 
-  onDeleteProduct, 
-  onReorderProducts, // תוקן: הוחזר לפרופס כדי שלא יקרוס
-  onRenameDepartment, 
-  onReorderDepartments, 
-  departmentNames, 
-  onAddDepartment 
-}: PantryCheckViewProps) {
+export function PantryCheckView({ productsByDepartment, departments, onUpdateStock, onUpdateProduct, onDeleteProduct, onReorderProducts, onReorderDepartments, departmentNames, onAddDepartment }: any) {
   const [searchQuery, setSearchQuery] = useState("");
   const [openDepts, setOpenDepts] = useState<Record<string, boolean>>({});
   const [editProduct, setEditProduct] = useState<Product | null>(null);
@@ -119,29 +68,22 @@ export function PantryCheckView({
   const [manageUnitsOpen, setManageUnitsOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isReordering, setIsReordering] = useState(false);
-  const reorderTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const isSearching = searchQuery.length > 0;
   const isDraggingDept = activeId?.startsWith("dept-");
 
   const allUsedUnits = useMemo(() => {
     const units = new Set<string>(SYSTEM_UNITS);
-    Object.values(productsByDepartment).flat().forEach(p => { if (p.unit) units.add(p.unit); });
-    return Array.from(units).sort((a, b) => {
-      const aIsSys = SYSTEM_UNITS.includes(a);
-      const bIsSys = SYSTEM_UNITS.includes(b);
-      if (aIsSys && !bIsSys) return -1;
-      if (!aIsSys && bIsSys) return 1;
-      return a.localeCompare(b);
-    });
+    Object.values(productsByDepartment).flat().forEach((p: any) => { if (p.unit) units.add(p.unit); });
+    return Array.from(units).sort((a, b) => (SYSTEM_UNITS.includes(a) ? -1 : 1));
   }, [productsByDepartment]);
 
   const baseRecurringByDept = useMemo(() => {
-    return Object.entries(productsByDepartment || {}).reduce((acc, [dept, items]) => {
-      const rec = items.filter((p) => !p.is_one_time);
+    return Object.entries(productsByDepartment || {}).reduce((acc, [dept, items]: any) => {
+      const rec = items.filter((p: any) => !p.is_one_time);
       if (rec.length > 0) acc[dept] = rec;
       return acc;
-    }, {} as Record<string, Product[]>);
+    }, {} as any);
   }, [productsByDepartment]);
 
   const sortedDepts = useMemo(() => {
@@ -154,7 +96,13 @@ export function PantryCheckView({
   useEffect(() => { if (!isReordering) setLocalDepts(sortedDepts); }, [sortedDepts, isReordering]);
   useEffect(() => { if (!isReordering) setLocalRecurring(baseRecurringByDept); }, [baseRecurringByDept, isReordering]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } }));
+  // זיהוי המחלקה הפעילה (לצורך שכבת הרחפת)
+  const activeDept = isDraggingDept ? localDepts.find(d => `dept-${d.id}` === activeId) : null;
+  const activeDeptConfig = activeDept ? (DEPT_CONFIG[activeDept.name] || DEPT_CONFIG["כללי"]) : null;
+  const ActiveDeptIcon = activeDeptConfig?.icon || ShoppingBag;
+  const activeItemsCount = activeDept ? (localRecurring[activeDept.name]?.length || 0) : 0;
+
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 10 } }));
 
   const handleDragStart = (event: DragStartEvent) => { setActiveId(event.active.id as string); };
 
@@ -163,8 +111,7 @@ export function PantryCheckView({
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     setIsReordering(true);
-    if (reorderTimeout.current) clearTimeout(reorderTimeout.current);
-    reorderTimeout.current = setTimeout(() => setIsReordering(false), 2000);
+    setTimeout(() => setIsReordering(false), 800);
     
     if (String(active.id).startsWith("dept-")) {
       const aId = String(active.id).replace("dept-", "");
@@ -175,7 +122,6 @@ export function PantryCheckView({
         const reordered = arrayMove(localDepts, oldIdx, newIdx);
         setLocalDepts(reordered);
         onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
-        setTimeout(() => document.getElementById(`dept-wrapper-${aId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 350);
       }
       return;
     }
@@ -184,7 +130,6 @@ export function PantryCheckView({
     for (const [name, items] of Object.entries(localRecurring)) {
       if (items.some((p) => p.id === active.id)) { foundDeptName = name; break; }
     }
-
     if (foundDeptName && localRecurring[foundDeptName]) {
       const items = localRecurring[foundDeptName];
       const oldIndex = items.findIndex((p) => p.id === active.id);
@@ -199,30 +144,22 @@ export function PantryCheckView({
 
   const handleUpdateUnit = (oldUnit: string, newUnit: string) => {
     if (SYSTEM_UNITS.includes(oldUnit)) return;
-    Object.values(productsByDepartment).flat().filter(p => p.unit === oldUnit).forEach(p => {
-      onUpdateProduct({ id: p.id, unit: newUnit });
-    });
+    Object.values(productsByDepartment).flat().filter((p:any) => p.unit === oldUnit).forEach((p:any) => onUpdateProduct({ id: p.id, unit: newUnit }));
   };
 
   const handleDeleteUnit = (unitToDelete: string) => {
     if (SYSTEM_UNITS.includes(unitToDelete)) return;
-    Object.values(productsByDepartment).flat().filter(p => p.unit === unitToDelete).forEach(p => {
-      onUpdateProduct({ id: p.id, unit: "יחידות" });
-    });
+    Object.values(productsByDepartment).flat().filter((p:any) => p.unit === unitToDelete).forEach((p:any) => onUpdateProduct({ id: p.id, unit: "יחידות" }));
   };
 
   const lowerQuery = searchQuery.toLowerCase();
   const displayDepts = useMemo(() => {
     if (!searchQuery) return localDepts;
-    return localDepts.filter(dept => {
-      const matchesDept = dept.name.toLowerCase().includes(lowerQuery);
-      const items = localRecurring[dept.name] || [];
-      return matchesDept || items.some(p => p.product_name?.toLowerCase().includes(lowerQuery));
-    });
+    return localDepts.filter(dept => dept.name.toLowerCase().includes(lowerQuery) || (localRecurring[dept.name] || []).some(p => p.product_name?.toLowerCase().includes(lowerQuery)));
   }, [localDepts, localRecurring, searchQuery, lowerQuery]);
 
   return (
-    <div className={`w-full flex flex-col items-center py-4 min-h-screen bg-slate-50/50 transition-all ${isDraggingDept ? 'pb-[100vh]' : 'pb-12'}`}>
+    <div className={`w-full flex flex-col items-center py-4 min-h-screen bg-slate-50/50 font-sans transition-all ${isDraggingDept ? 'pb-[100vh]' : 'pb-12'}`}>
       <div className="w-full max-w-[calc(100vw-32px)] space-y-6">
         <div className="relative bg-white border border-slate-200 shadow-sm rounded-[2rem] p-6 font-sans">
           <div className="flex gap-2">
@@ -243,8 +180,13 @@ export function PantryCheckView({
               const displayItems = searchQuery && !dept.name.toLowerCase().includes(searchQuery.toLowerCase()) ? items.filter((p) => p.product_name?.toLowerCase().includes(searchQuery.toLowerCase())) : items;
 
               return (
-                <SortableDepartmentItem key={dept.id} dept={dept} disabled={activeId !== null && !isDraggingDept}>
-                  <Collapsible open={isSearching ? true : (isDraggingDept ? false : openDepts[dept.name] !== false)} onOpenChange={(o) => setOpenDepts({ ...openDepts, [dept.name]: o })} className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${config.border}`}>
+                <SortableDepartmentItem key={dept.id} dept={dept} disabled={activeId !== null && !activeId.startsWith("dept-")}>
+                  {/* אם גוררים, מכווצים אוטומטית! */}
+                  <Collapsible 
+                    open={isSearching ? true : (isDraggingDept ? false : openDepts[dept.name] !== false)} 
+                    onOpenChange={(o) => setOpenDepts({ ...openDepts, [dept.name]: o })} 
+                    className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${config.border}`}
+                  >
                     <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-4 font-bold outline-none">
                       <div className="flex items-center gap-3">
                         <div className="p-2 rounded-lg bg-slate-50"><config.icon className={`h-5 w-5 ${config.color}`} /></div>
@@ -265,6 +207,29 @@ export function PantryCheckView({
               );
             })}
           </div>
+
+          {/* שכבת הרחפת - מאפשרת כיווץ בלי שהגרירה תקפוץ */}
+          <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: "0.4" } } }) }}>
+            {activeDept && activeDeptConfig ? (
+              <div className="w-full flex justify-center opacity-100 drop-shadow-2xl">
+                <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
+                  <button className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 shadow-sm cursor-grabbing">
+                    <GripVertical className="h-5 w-5 opacity-50" />
+                  </button>
+                  <div className={`flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${activeDeptConfig.border}`}>
+                    <div className="w-full flex items-center justify-between px-4 py-4 font-bold">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-slate-50"><ActiveDeptIcon className={`h-5 w-5 ${activeDeptConfig.color}`} /></div>
+                        <span className="text-lg text-slate-800">{activeDept.name}</span>
+                        <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{activeItemsCount}</span>
+                      </div>
+                      <ChevronDown className="h-5 w-5 text-slate-300" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       </div>
 
@@ -276,7 +241,7 @@ export function PantryCheckView({
               <UnitRow key={unit} unit={unit} isSystem={SYSTEM_UNITS.includes(unit)} onRename={handleUpdateUnit} onDelete={() => handleDeleteUnit(unit)} />
             ))}
           </div>
-          <DialogFooter><Button className="w-full rounded-xl py-6 font-bold" onClick={() => setManageUnitsOpen(false)}>סיום</Button></DialogFooter>
+          <DialogFooter><Button className="w-full rounded-xl py-6 font-bold bg-indigo-600 text-white" onClick={() => setManageUnitsOpen(false)}>סיום</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
