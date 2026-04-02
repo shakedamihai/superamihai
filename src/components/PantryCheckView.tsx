@@ -39,6 +39,7 @@ import {
   useSensors,
   DragEndEvent,
   DragStartEvent,
+  MeasuringStrategy, // חשוב מאוד לגרירה יציבה!
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -103,13 +104,19 @@ function SortableDepartmentItem({ dept, disabled, children }: { dept: Department
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: transition || 'transform 200ms cubic-bezier(0.2, 0, 0, 1)',
-    opacity: isDragging ? 0.6 : 1,
+    opacity: isDragging ? 0.8 : 1,
     zIndex: isDragging ? 50 : undefined,
     position: 'relative' as const,
   };
 
   return (
-    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center mb-4 touch-none">
+    <div 
+      id={`dept-wrapper-${dept.id}`}
+      ref={setNodeRef} 
+      style={style} 
+      // scroll-mt-6 מבטיח שיהיה מרווח יפה מלמעלה כשגוללים אל המחלקה!
+      className="w-full flex justify-center mb-4 touch-none scroll-mt-6"
+    >
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
         <button
           {...attributes}
@@ -146,6 +153,7 @@ export function PantryCheckView({
   const reorderTimeout = useRef<NodeJS.Timeout | null>(null);
 
   const isSearching = searchQuery.length > 0;
+  const isDraggingDept = activeId?.startsWith("dept-");
 
   const allUsedUnits = useMemo(() => {
     const units = new Set<string>(SYSTEM_UNITS);
@@ -231,12 +239,13 @@ export function PantryCheckView({
         setLocalDepts(reordered);
         onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
         
+        // תיקון הגלילה: מחכים בדיוק שאנימציית הפתיחה תסתיים, ואז גוללים ישירות לראש המחלקה!
         setTimeout(() => {
           const element = document.getElementById(`dept-wrapper-${activeDeptId}`);
           if (element) {
             element.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-        }, 100);
+        }, 350);
       }
       return;
     }
@@ -283,19 +292,15 @@ export function PantryCheckView({
   }, [localDepts, localRecurring, searchQuery, lowerQuery]);
 
   return (
-    <div className="w-full flex flex-col items-center py-4 min-h-screen bg-slate-50/50 font-sans">
+    // הוספת padding תחתון עצום (pb-[100vh]) בזמן גרירת מחלקה כדי למנוע את קפיצת המסך כשהן מתכווצות
+    <div className={`w-full flex flex-col items-center py-4 min-h-screen bg-slate-50/50 font-sans transition-all duration-300 ${isDraggingDept ? 'pb-[100vh]' : 'pb-12'}`}>
       <div className="w-full max-w-[calc(100vw-32px)] space-y-6">
         
         <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'}`}>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <div className="absolute inset-y-0 right-0 flex items-center pr-4"><Search className="h-5 w-5 text-slate-400" /></div>
-              <Input
-                placeholder="חיפוש פריט או מחלקה..."
-                className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg focus-visible:ring-indigo-100"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <Input placeholder="חיפוש פריט או מחלקה..." className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg focus-visible:ring-indigo-100" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               {isSearching && <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><X className="h-5 w-5" /></button>}
             </div>
             <Button variant="outline" size="icon" className="h-[64px] w-[64px] rounded-xl border-slate-200 hover:bg-slate-50" onClick={() => setManageUnitsOpen(true)}>
@@ -304,7 +309,8 @@ export function PantryCheckView({
           </div>
         </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        {/* MeasuringStrategy.Always קריטי פה כדי שהדפדפן ידע לחשב מחדש את הגובה המכווץ */}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}>
           <SortableContext items={displayDepts.map(d => `dept-${d.id}`)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col gap-4">
               {displayDepts.map((dept) => {
@@ -315,7 +321,12 @@ export function PantryCheckView({
 
                 return (
                   <SortableDepartmentItem key={dept.id} dept={dept} disabled={activeId !== null && !activeId.startsWith("dept-")}>
-                    <Collapsible open={isSearching ? true : (activeId?.startsWith("dept-") ? false : openDepts[dept.name] !== false)} onOpenChange={(o) => setOpenDepts({ ...openDepts, [dept.name]: o })} className={`bg-white rounded-2xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] border border-slate-100 border-r-8 transition-shadow ${borderClass}`}>
+                    <Collapsible 
+                      // כיווץ אוטומטי לכל המחלקות בזמן גרירת מחלקה!
+                      open={isSearching ? true : (isDraggingDept ? false : openDepts[dept.name] !== false)} 
+                      onOpenChange={(o) => setOpenDepts({ ...openDepts, [dept.name]: o })} 
+                      className={`bg-white rounded-2xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] border border-slate-100 border-r-8 transition-shadow ${borderClass}`}
+                    >
                       <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-5 font-bold outline-none group">
                         <div className="flex items-center gap-3">
                           <div className={`p-2 rounded-lg bg-slate-50 group-hover:bg-slate-100 transition-colors`}><Icon className={`h-5 w-5 ${iconClass}`} /></div>
