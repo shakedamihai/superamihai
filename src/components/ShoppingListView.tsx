@@ -62,6 +62,21 @@ const getDeptIcon = (name: string) => {
   return ShoppingBag;
 };
 
+// פונקציית עזר להמרת יחידות מידה ללשון רבים ולקיצורים תקניים
+const formatUnit = (unit?: string) => {
+  if (!unit) return "יחידות";
+  
+  const lowerUnit = unit.toLowerCase();
+  if (lowerUnit.includes("קילו")) return "ק\"ג";
+  if (lowerUnit.includes("יחיד")) return "יחידות";
+  if (lowerUnit.includes("חביל")) return "חבילות";
+  if (lowerUnit.includes("מארז")) return "מארזים";
+  if (lowerUnit.includes("בקבוק")) return "בקבוקים";
+  if (lowerUnit.includes("פחי")) return "פחיות";
+  
+  return unit;
+};
+
 export function ShoppingListView({
   shoppingByDepartment,
   shoppingList,
@@ -86,14 +101,16 @@ export function ShoppingListView({
   };
 
   const deptKeys = useMemo(() => Object.keys(shoppingByDepartment).sort(), [shoppingByDepartment]);
+  
   const deptColors = useMemo(() => {
     const mapping: Record<string, typeof COLORS[0]> = {};
     const usedIndices = new Set<number>();
     const preferences = [
       { keys: ['ירק'], idx: 1 }, { keys: ['פיר'], idx: 6 },
       { keys: ['חלב', 'גבינ', 'מקרר'], idx: 2 }, { keys: ['בשר', 'עוף', 'קצביה'], idx: 0 }, 
-      { keys: ['דג'], idx: 5 }, 
+      { keys: ['דג'], idx: 5 }, { keys: ['פארם'], idx: 4 }, 
     ];
+
     deptKeys.forEach((dept) => {
       const lower = dept.toLowerCase();
       for (const pref of preferences) {
@@ -104,6 +121,7 @@ export function ShoppingListView({
         }
       }
     });
+
     deptKeys.forEach((dept) => {
       if (!mapping[dept]) {
         const availableIndex = COLORS.findIndex((_, i) => !usedIndices.has(i));
@@ -116,6 +134,7 @@ export function ShoppingListView({
 
   const isSearching = searchQuery.length > 0;
   const lowerQuery = searchQuery.toLowerCase();
+  
   const filteredDepts = useMemo(() => {
     if (!searchQuery) return deptKeys;
     return deptKeys.filter(dept => {
@@ -137,7 +156,7 @@ export function ShoppingListView({
   }
 
   return (
-    <div className="space-y-6 pb-24 bg-slate-50 min-h-screen pt-4 px-2">
+    <div className="space-y-6 pb-24 bg-slate-50 min-h-screen pt-4 px-2 font-sans">
       <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${
           isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'
       }`}>
@@ -153,9 +172,12 @@ export function ShoppingListView({
               onChange={(e) => setSearchQuery(e.target.value)}
             />
             {isSearching && (
-              <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><X className="h-5 w-5" /></button>
+              <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <X className="h-5 w-5" />
+              </button>
             )}
           </div>
+
           {!isSearching && (
             <div className="space-y-4 animate-in fade-in duration-300">
               <div className="space-y-2 px-1">
@@ -168,10 +190,14 @@ export function ShoppingListView({
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button onClick={onCopyList} variant="outline" className="flex-1 gap-2 rounded-xl h-12 border-slate-200 font-bold text-slate-700"><Copy className="h-4 w-4" /> העתק</Button>
+                <Button onClick={onCopyList} variant="outline" className="flex-1 gap-2 rounded-xl h-12 border-slate-200 font-bold text-slate-700">
+                  <Copy className="h-4 w-4" /> העתק
+                </Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button className="flex-1 gap-2 rounded-xl h-12 font-bold" disabled={isFinishing || checked.size === 0}><CheckCircle2 className="h-4 w-4" /> סיום</Button>
+                    <Button className="flex-1 gap-2 rounded-xl h-12 font-bold" disabled={isFinishing || checked.size === 0}>
+                      <CheckCircle2 className="h-4 w-4" /> סיום
+                    </Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="rounded-3xl p-6">
                     <AlertDialogHeader>
@@ -191,19 +217,25 @@ export function ShoppingListView({
       </div>
 
       <div>
-        {!isSearching && <div className="flex items-center justify-between px-3 mb-4"><h2 className="text-xl font-extrabold text-slate-800">מה לקנות?</h2></div>}
+        {!isSearching && (
+          <div className="flex items-center justify-between px-3 mb-4">
+            <h2 className="text-xl font-extrabold text-slate-800">מה לקנות?</h2>
+          </div>
+        )}
+
         <div className="space-y-4">
           {filteredDepts.map((dept) => {
             const items = shoppingByDepartment[dept];
             const displayItems = isSearching 
               ? (dept.toLowerCase().includes(lowerQuery) ? items : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery)))
               : items;
-            const { borderClass, iconClass } = deptColors[dept] || COLORS[0];
+
             const Icon = getDeptIcon(dept);
+            const { borderClass, iconClass } = deptColors[dept] || COLORS[0];
 
             return (
-              <Collapsible key={dept} open={isSearching ? true : (openDepts[dept] !== false)} onOpenChange={(o) => setOpenDepts(p => ({ ...p, [dept]: o }))} className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${borderClass}`}>
-                <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-4 font-bold">
+              <Collapsible key={dept} open={isSearching ? true : (openDepts[dept] !== false)} onOpenChange={(open) => setOpenDepts(prev => ({ ...prev, [dept]: open }))} className={`bg-white rounded-2xl shadow-sm border border-border overflow-hidden border-r-4 ${borderClass}`}>
+                <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-4 font-bold text-foreground">
                   <div className="flex items-center gap-3">
                     <Icon className={`h-5 w-5 ${iconClass}`} />
                     <span>{dept}</span>
@@ -217,19 +249,16 @@ export function ShoppingListView({
                       const isChecked = checked.has(p.id);
                       const lactoseFree = isLactoseFree(p.product_name);
                       
-                      // לוגיקת עיבוד היחידות שביקשת
+                      // שימוש בפונקציה לעיצוב היחידות
                       const qty = p.is_one_time ? 1 : Math.max(0, p.base_quantity - p.current_stock);
-                      let unitDisplay = p.unit?.includes("קילו") ? "ק\"ג" : (p.unit || "יחידות");
-                      if (qty === 1 && (unitDisplay === "יחידות" || !p.unit)) {
-                        unitDisplay = "יחידה";
-                      }
+                      const unitDisplay = formatUnit(p.unit);
 
                       return (
-                        <div key={p.id} onClick={() => setChecked(prev => { const n = new Set(prev); if (n.has(p.id)) n.delete(p.id); else n.add(p.id); return n; })} className={`flex items-center justify-between rounded-xl px-4 py-3.5 border cursor-pointer transition-all ${isChecked ? "bg-muted/40 opacity-50" : lactoseFree ? "bg-sky-50/40 border-sky-100" : "bg-white border-gray-100"}`}>
+                        <div key={p.id} onClick={() => toggleChecked(p.id)} className={`group flex items-center justify-between rounded-xl px-4 py-3.5 border cursor-pointer transition-all ${isChecked ? "bg-muted/40 opacity-50" : lactoseFree ? "bg-sky-50/40 border-sky-100" : "bg-white border-gray-100"}`}>
                           <div className="flex items-center gap-4">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${isChecked ? "bg-primary border-primary text-white" : "bg-white border-slate-200"}`}>{isChecked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}</div>
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${isChecked ? "bg-primary border-primary text-white" : "bg-white border-muted-foreground/30"}`}>{isChecked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}</div>
                             <div className="flex flex-col text-right">
-                              <span className={`text-[1.05rem] font-medium ${isChecked ? "line-through text-muted-foreground" : ""}`}>{p.product_name}</span>
+                              <span className={`text-[1.05rem] font-medium ${isChecked ? "line-through text-muted-foreground" : "text-foreground"}`}>{p.product_name}</span>
                               <div className="flex items-center gap-2 mt-0.5">
                                 <span className={`text-sm ${isChecked ? "text-muted-foreground" : "text-primary font-bold"}`}>
                                   {qty} {unitDisplay}
