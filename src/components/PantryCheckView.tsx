@@ -50,7 +50,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { SortableProductRow } from "./SortableProductRow";
 
 const SYSTEM_UNITS = [
-  "יחידות", 'ק"ג', "ליטר", "חבילות", "מארזים", 
+  "יחידות", 'ק"ג', "ליטרים", "חבילות", "מארזים", 
   "בקבוקים", "פחיות", "גלילים", "שפופרות", 
   "טבליות", "קפסולות", "זוגות", "גרם"
 ];
@@ -109,12 +109,7 @@ function SortableDepartmentItem({ dept, disabled, children }: { dept: Department
   };
 
   return (
-    <div 
-      id={`dept-wrapper-${dept.id}`}
-      ref={setNodeRef} 
-      style={style} 
-      className="w-full flex justify-center mb-4 touch-none"
-    >
+    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center mb-4 touch-none">
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
         <button
           {...attributes}
@@ -173,9 +168,7 @@ export function PantryCheckView({
   }, [productsByDepartment]);
 
   const baseSortedDepts = useMemo(() => {
-    return [...(departments || [])]
-      .filter((d) => baseRecurringByDept[d.name])
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    return [...(departments || [])].filter((d) => baseRecurringByDept[d.name]).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [departments, baseRecurringByDept]);
 
   const [localDepts, setLocalDepts] = useState<Department[]>(baseSortedDepts);
@@ -238,7 +231,6 @@ export function PantryCheckView({
         setLocalDepts(reordered);
         onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
         
-        // תיקון הגלילה (Scroll) - נותן לדפדפן זמן קצרצר לעדכן את הממשק ואז קופץ בדיוק לתחילת המחלקה
         setTimeout(() => {
           const element = document.getElementById(`dept-wrapper-${activeDeptId}`);
           if (element) {
@@ -306,12 +298,7 @@ export function PantryCheckView({
               />
               {isSearching && <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><X className="h-5 w-5" /></button>}
             </div>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-[64px] w-[64px] rounded-xl border-slate-200 hover:bg-slate-50"
-              onClick={() => setManageUnitsOpen(true)}
-            >
+            <Button variant="outline" size="icon" className="h-[64px] w-[64px] rounded-xl border-slate-200 hover:bg-slate-50" onClick={() => setManageUnitsOpen(true)}>
               <Settings2 className="h-6 w-6 text-slate-500" />
             </Button>
           </div>
@@ -328,16 +315,10 @@ export function PantryCheckView({
 
                 return (
                   <SortableDepartmentItem key={dept.id} dept={dept} disabled={activeId !== null && !activeId.startsWith("dept-")}>
-                    <Collapsible 
-                      open={isSearching ? true : (activeId?.startsWith("dept-") ? false : openDepts[dept.name] !== false)} 
-                      onOpenChange={(o) => setOpenDepts({ ...openDepts, [dept.name]: o })} 
-                      className={`bg-white rounded-2xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] border border-slate-100 border-r-8 transition-shadow ${borderClass}`}
-                    >
+                    <Collapsible open={isSearching ? true : (activeId?.startsWith("dept-") ? false : openDepts[dept.name] !== false)} onOpenChange={(o) => setOpenDepts({ ...openDepts, [dept.name]: o })} className={`bg-white rounded-2xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.07)] border border-slate-100 border-r-8 transition-shadow ${borderClass}`}>
                       <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-5 font-bold outline-none group">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg bg-slate-50 group-hover:bg-slate-100 transition-colors`}>
-                            <Icon className={`h-5 w-5 ${iconClass}`} />
-                          </div>
+                          <div className={`p-2 rounded-lg bg-slate-50 group-hover:bg-slate-100 transition-colors`}><Icon className={`h-5 w-5 ${iconClass}`} /></div>
                           <span className="text-slate-800 text-lg tracking-tight">{dept.name}</span>
                           <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{displayItems.length}</span>
                         </div>
@@ -347,13 +328,7 @@ export function PantryCheckView({
                         <SortableContext items={displayItems.map(p => p.id)} strategy={verticalListSortingStrategy}>
                           <div className="space-y-2 border-t border-slate-50 pt-4">
                             {displayItems.map((p) => (
-                              <SortableProductRow 
-                                key={p.id} 
-                                product={p} 
-                                onEdit={() => setEditProduct(p)} 
-                                onDelete={() => setDeleteTarget(p)} 
-                                onUpdateStock={onUpdateStock} 
-                              />
+                              <SortableProductRow key={p.id} product={p} onEdit={() => setEditProduct(p)} onDelete={() => setDeleteTarget(p)} onUpdateStock={onUpdateStock} />
                             ))}
                           </div>
                         </SortableContext>
