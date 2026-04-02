@@ -13,7 +13,6 @@ interface SortableProductRowProps {
   onUpdateStock: (id: string, stock: number) => void;
 }
 
-// פונקציית המרה לשמות תקניים ורבים
 const formatUnit = (unit?: string) => {
   if (!unit) return "יחידות";
   const lowerUnit = unit.toLowerCase();
@@ -27,7 +26,6 @@ const formatUnit = (unit?: string) => {
   return unit;
 };
 
-// פונקציית צעדים חכמה: חצי קילו/ליטר, 100 גרם, או 1 יחידה
 const getStepForUnit = (unit?: string) => {
   if (!unit) return 1;
   const lowerUnit = unit.toLowerCase();
@@ -46,12 +44,12 @@ export function SortableProductRow({
 }: SortableProductRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
 
-  // סטייט מקומי לעדכון מיידי ומהיר על המסך (Optimistic UI)
   const [localStock, setLocalStock] = useState(product.current_stock);
+  const [inputValue, setInputValue] = useState(product.current_stock.toString());
 
-  // סנכרון אם הנתונים מתעדכנים מהשרת
   useEffect(() => {
     setLocalStock(product.current_stock);
+    setInputValue(product.current_stock.toString());
   }, [product.current_stock]);
 
   const style = {
@@ -65,7 +63,6 @@ export function SortableProductRow({
   const unitDisplay = formatUnit(product.unit);
   const missingQuantity = Math.max(0, product.base_quantity - localStock);
   
-  // הוספת הכמות והיחידות לטקסט "במלאי"
   const stockInfoText = missingQuantity > 0 
     ? `חסר ${Number(missingQuantity.toFixed(2))} ${unitDisplay}` 
     : `במלאי (${Number(localStock.toFixed(2))} ${unitDisplay})`;
@@ -73,15 +70,35 @@ export function SortableProductRow({
   const handleMinus = () => {
     const newValue = Math.max(0, localStock - step);
     const fixedValue = Number(newValue.toFixed(2));
-    setLocalStock(fixedValue); // משנה מיד על המסך
-    onUpdateStock(product.id, fixedValue); // שומר ברקע בלי לתקוע
+    setLocalStock(fixedValue);
+    setInputValue(fixedValue.toString());
+    onUpdateStock(product.id, fixedValue); 
   };
 
   const handlePlus = () => {
     const newValue = localStock + step;
     const fixedValue = Number(newValue.toFixed(2));
-    setLocalStock(fixedValue); 
+    setLocalStock(fixedValue);
+    setInputValue(fixedValue.toString());
     onUpdateStock(product.id, fixedValue); 
+  };
+
+  // פונקציות להקלדה חופשית של המספר
+  const handleInputBlur = () => {
+    let parsed = parseFloat(inputValue);
+    if (isNaN(parsed) || parsed < 0) parsed = 0;
+    const fixedValue = Number(parsed.toFixed(2));
+    setLocalStock(fixedValue);
+    setInputValue(fixedValue.toString());
+    if (fixedValue !== product.current_stock) {
+      onUpdateStock(product.id, fixedValue);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur();
+    }
   };
 
   return (
@@ -108,9 +125,17 @@ export function SortableProductRow({
           <Minus className="h-3 w-3 text-slate-600" />
         </Button>
         
-        <span className="min-w-[1.8rem] text-center font-black text-sm text-slate-700">
-          {Number(localStock.toFixed(2))}
-        </span>
+        {/* תיבת טקסט חכמה להקלדת כמות - מעוצבת כך שתיראה כמו טקסט רגיל עד שלוחצים עליה */}
+        <input
+          type="number"
+          inputMode="decimal"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onBlur={handleInputBlur}
+          onKeyDown={handleKeyDown}
+          onFocus={(e) => e.target.select()} // מסמן את כל המספר בלחיצה למחיקה מהירה
+          className="w-12 text-center font-black text-sm text-slate-700 bg-transparent border-none focus:ring-2 focus:ring-indigo-100 rounded outline-none p-0 m-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+        />
         
         <Button variant="outline" size="icon" className="h-8 w-8 rounded-full border-slate-200 bg-slate-50" onClick={handlePlus}>
           <Plus className="h-3 w-3 text-slate-600" />
