@@ -67,6 +67,7 @@ const getDeptIcon = (name: string) => {
 export function ShoppingListView({
   shoppingByDepartment,
   shoppingList,
+  departmentOrder,
   onCopyList,
   onFinishChecked,
   onDeleteProduct,
