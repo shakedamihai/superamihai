@@ -1,13 +1,13 @@
 import { 
   ChevronDown, Pencil, GripVertical, Search, X, Trash2, Settings2, Lock,
   Beef, Carrot, Milk, Snowflake, Sparkles, 
-  Wheat, CupSoda, Baby, ShoppingBag, Apple, Fish, Package, Citrus, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy,
-  CookingPot, Bean 
+  Wheat, CupSoda, Baby, ShoppingBag, Apple, Fish, Package, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy,
+  CookingPot, Bean
 } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { Department } from "@/hooks/useDepartments";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { EditProductDialog } from "./EditProductDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from "@/components/ui/alert-dialog";
@@ -27,9 +27,9 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "מוצרי חלב ומקרר": { icon: Milk, color: "text-blue-500", border: "border-r-blue-500" },
   "קצביה": { icon: Beef, color: "text-red-500", border: "border-r-red-500" },
   "דגים": { icon: Fish, color: "text-cyan-500", border: "border-r-cyan-500" },
-  "קפואים": { icon: Snowflake, color: "text-indigo-600", border: "border-r-indigo-600" }, // צבע כחול כהה יותר
+  "קפואים": { icon: Snowflake, color: "text-indigo-600", border: "border-r-indigo-600" },
   "מזווה ושימורים": { icon: Package, color: "text-orange-500", border: "border-r-orange-500" },
-  "תבלינים ואפייה": { icon: CookingPot, color: "text-amber-700", border: "border-r-amber-700" }, // איקון סיר/אפייה
+  "תבלינים ואפייה": { icon: CookingPot, color: "text-amber-700", border: "border-r-amber-700" },
   "מאפייה ולחם": { icon: Wheat, color: "text-yellow-500", border: "border-r-yellow-500" },
   "חטיפים ומתוקים": { icon: Candy, color: "text-purple-500", border: "border-r-purple-500" },
   "משקאות": { icon: CupSoda, color: "text-indigo-500", border: "border-r-indigo-500" },
@@ -37,7 +37,7 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "חומרי ניקוי": { icon: Droplets, color: "text-slate-500", border: "border-r-slate-500" },
   "חד-פעמי": { icon: UtensilsCrossed, color: "text-rose-400", border: "border-r-rose-400" },
   "תינוקות": { icon: Baby, color: "text-teal-500", border: "border-r-teal-500" },
-  "פיצוחים ופירות יבשים": { icon: Bean, color: "text-yellow-700", border: "border-r-yellow-700" }, // איקון אגוז/גרעין
+  "פיצוחים ופירות יבשים": { icon: Bean, color: "text-yellow-700", border: "border-r-yellow-700" },
   "מעדניה": { icon: ChefHat, color: "text-violet-600", border: "border-r-violet-600" },
   "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
   "כללי": { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-400" },
@@ -58,7 +58,6 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
-// עיצוב מחדש - כפתור הגרירה מוכנס כעת פנימה כפרופ (renderCard) במקום לעטוף מבחוץ
 function SortableDepartmentItem({ 
   id, 
   disabled, 
@@ -73,7 +72,6 @@ function SortableDepartmentItem({
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id, disabled });
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1, zIndex: isDragging ? 0 : 1, position: 'relative' as const };
   
-  // ידית הגרירה שנעביר לתוך הכותרת
   const dragHandle = (
     <div 
       onPointerDown={onPrepareDrag} 
@@ -88,7 +86,6 @@ function SortableDepartmentItem({
 
   return (
     <div id={`${id}-wrapper`} ref={setNodeRef} style={style} className="w-full flex justify-center scroll-mt-6">
-      {/* רוחב מקסימלי שמונע חיתוך, נותן מרווח קל בצדדים */}
       <div className="w-full max-w-[calc(100vw-20px)] md:max-w-[calc(100vw-32px)]">
         {renderCard(dragHandle)}
       </div>
@@ -273,7 +270,6 @@ export function PantryCheckView({
                         onOpenChange={(o) => setOpenDepts({ ...openDepts, [dept.name]: o })} 
                         className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${config.border}`}
                       >
-                        {/* העיצוב החדש והחסכוני במקום: הכפתור מוטמע בפנים! */}
                         <div className="w-full flex items-center justify-between pl-2 pr-1 py-3 outline-none">
                           <div className="flex items-center gap-1 flex-1 overflow-hidden">
                             {dragHandle}
