@@ -13,7 +13,7 @@ interface SortableProductRowProps {
   onUpdateStock: (id: string, stock: number) => void;
 }
 
-// פונקציית עזר להמרת יחידות מידה ללשון רבים ולקיצורים תקניים
+// פונקציית המרה לשמות תקניים ורבים
 const formatUnit = (unit?: string) => {
   if (!unit) return "יחידות";
   const lowerUnit = unit.toLowerCase();
@@ -27,7 +27,7 @@ const formatUnit = (unit?: string) => {
   return unit;
 };
 
-// פונקציית עזר להחלטה על קפיצות הפלוס/מינוס לפי היחידה
+// פונקציית צעדים חכמה: חצי קילו/ליטר, 100 גרם, או 1 יחידה
 const getStepForUnit = (unit?: string) => {
   if (!unit) return 1;
   const lowerUnit = unit.toLowerCase();
@@ -46,10 +46,10 @@ export function SortableProductRow({
 }: SortableProductRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
 
-  // ניהול סטייט מקומי לעדכון מיידי על המסך (ללא דיליי)
+  // סטייט מקומי לעדכון מיידי ומהיר על המסך (Optimistic UI)
   const [localStock, setLocalStock] = useState(product.current_stock);
 
-  // סנכרון במקרה שהנתונים מהשרת מתעדכנים
+  // סנכרון אם הנתונים מתעדכנים מהשרת
   useEffect(() => {
     setLocalStock(product.current_stock);
   }, [product.current_stock]);
@@ -65,7 +65,7 @@ export function SortableProductRow({
   const unitDisplay = formatUnit(product.unit);
   const missingQuantity = Math.max(0, product.base_quantity - localStock);
   
-  // הוספת הכמות והיחידות לטקסט ה"במלאי"
+  // הוספת הכמות והיחידות לטקסט "במלאי"
   const stockInfoText = missingQuantity > 0 
     ? `חסר ${Number(missingQuantity.toFixed(2))} ${unitDisplay}` 
     : `במלאי (${Number(localStock.toFixed(2))} ${unitDisplay})`;
@@ -73,15 +73,15 @@ export function SortableProductRow({
   const handleMinus = () => {
     const newValue = Math.max(0, localStock - step);
     const fixedValue = Number(newValue.toFixed(2));
-    setLocalStock(fixedValue); // עדכון מיידי במסך
-    onUpdateStock(product.id, fixedValue); // קריאה לשרת ברקע
+    setLocalStock(fixedValue); // משנה מיד על המסך
+    onUpdateStock(product.id, fixedValue); // שומר ברקע בלי לתקוע
   };
 
   const handlePlus = () => {
     const newValue = localStock + step;
     const fixedValue = Number(newValue.toFixed(2));
-    setLocalStock(fixedValue); // עדכון מיידי במסך
-    onUpdateStock(product.id, fixedValue); // קריאה לשרת ברקע
+    setLocalStock(fixedValue); 
+    onUpdateStock(product.id, fixedValue); 
   };
 
   return (
@@ -108,7 +108,7 @@ export function SortableProductRow({
           <Minus className="h-3 w-3 text-slate-600" />
         </Button>
         
-        <span className="min-w-[1.5rem] text-center font-black text-sm text-slate-700">
+        <span className="min-w-[1.8rem] text-center font-black text-sm text-slate-700">
           {Number(localStock.toFixed(2))}
         </span>
         
