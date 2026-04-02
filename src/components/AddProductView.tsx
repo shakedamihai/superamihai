@@ -29,7 +29,11 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
   const [unit, setUnit] = useState("יחידות");
   const [baseQty, setBaseQty] = useState(1);
   const [isOneTime, setIsOneTime] = useState(false);
+  
+  // משתני הוספה מהירה - שינינו פה שיוכל לקבל גם טקסט בזמן הקלדה
   const [quickName, setQuickName] = useState("");
+  const [quickQty, setQuickQty] = useState<number | string>(1);
+  
   const [isManualOverride, setIsManualOverride] = useState(false);
 
   useEffect(() => {
@@ -80,12 +84,13 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
     onAdd({
       product_name: quickName.trim(),
       department: category,
-      base_quantity: 1,
+      base_quantity: Number(quickQty) || 1, // הבטחה שזה נשלח כמספר
       current_stock: 0,
       is_one_time: true,
       unit: "יחידות",
     });
     setQuickName("");
+    setQuickQty(1); // איפוס
   };
 
   return (
@@ -96,7 +101,7 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
           size="sm" 
           onClick={() => syncStandardDepartments.mutate()} 
           disabled={syncStandardDepartments.isPending}
-          className="bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-100 rounded-xl gap-2"
+          className="bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-100 rounded-xl gap-2 shadow-sm"
         >
           <RefreshCw className={`h-4 w-4 ${syncStandardDepartments.isPending ? 'animate-spin' : ''}`} /> 
           סנכרן
@@ -106,16 +111,52 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
       <div className="bg-white rounded-[1.5rem] border border-slate-200 p-6 shadow-sm">
         <div className="flex items-center gap-2 mb-4">
           <div className="p-1.5 bg-amber-50 rounded-lg"><Zap className="h-4 w-4 text-amber-500 fill-amber-500" /></div>
-          <h3 className="font-bold text-slate-800">הוספה מהירה (חד-פעמי)</h3>
+          <h3 className="font-bold text-slate-800">הוספה מהירה (מוצרים לאירוח / חד-פעמיים)</h3>
         </div>
-        <form onSubmit={handleQuickAdd} className="flex gap-2">
-          <Input value={quickName} onChange={(e) => setQuickName(e.target.value)} placeholder="למשל: סבון כלים" className="flex-1 rounded-xl bg-slate-50 h-12" />
-          <Button type="submit" size="icon" disabled={isAdding || !quickName.trim()} className="h-12 w-12 rounded-xl"><Plus className="h-5 w-5" /></Button>
+        <form onSubmit={handleQuickAdd} className="flex gap-2 items-center">
+          <Input 
+            value={quickName} 
+            onChange={(e) => setQuickName(e.target.value)} 
+            placeholder="שם המוצר..." 
+            className="flex-1 rounded-xl bg-slate-50 h-12" 
+          />
+          <div className="flex items-center bg-slate-50 rounded-xl border border-slate-200 h-12 overflow-hidden">
+            <button 
+              type="button" 
+              onClick={() => setQuickQty(Math.max(1, (Number(quickQty) || 1) - 1))} 
+              className="px-3 h-full text-slate-400 hover:text-slate-800 hover:bg-slate-200 active:bg-slate-300 transition-colors"
+            >
+              <Minus className="h-4 w-4"/>
+            </button>
+            <input 
+              type="number"
+              min="1"
+              value={quickQty}
+              onChange={(e) => setQuickQty(e.target.value)}
+              onBlur={() => {
+                // אם המשתמש מוחק את הכל ועוזב את השדה, זה יחזור ל-1 אוטומטית
+                if (Number(quickQty) < 1 || isNaN(Number(quickQty))) {
+                  setQuickQty(1);
+                }
+              }}
+              className="w-10 text-center font-bold text-slate-800 bg-transparent border-none p-0 focus:outline-none focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <button 
+              type="button" 
+              onClick={() => setQuickQty((Number(quickQty) || 1) + 1)} 
+              className="px-3 h-full text-slate-400 hover:text-slate-800 hover:bg-slate-200 active:bg-slate-300 transition-colors"
+            >
+              <Plus className="h-4 w-4"/>
+            </button>
+          </div>
+          <Button type="submit" size="icon" disabled={isAdding || !quickName.trim()} className="h-12 w-12 rounded-xl shrink-0 bg-amber-500 hover:bg-amber-600 text-white">
+            <Plus className="h-5 w-5" />
+          </Button>
         </form>
       </div>
 
       <div className="bg-white rounded-[1.5rem] border border-slate-200 p-6 shadow-sm">
-        <h3 className="font-bold text-slate-800 mb-5">הוספת מוצר קבוע</h3>
+        <h3 className="font-bold text-slate-800 mb-5">הוספת מוצר למזווה הקבוע</h3>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label>שם המוצר</Label>
@@ -139,7 +180,7 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
 
           {!isOneTime && (
             <div className="space-y-2">
-              <Label>כמות בסיס</Label>
+              <Label>כמות בסיס במלאי</Label>
               <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-100">
                 <button type="button" onClick={() => setBaseQty(Math.max(min, Number((baseQty - step).toFixed(2))))} className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center">
                   <Minus className="h-5 w-5" />
@@ -153,12 +194,12 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
           )}
 
           <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-            <Label htmlFor="one-time" className="font-bold">מוצר חד-פעמי</Label>
+            <Label htmlFor="one-time" className="font-bold">מוצר חד-פעמי (לא יישאר במזווה)</Label>
             <Switch id="one-time" checked={isOneTime} onCheckedChange={setIsOneTime} />
           </div>
 
           <Button type="submit" className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg shadow-md shadow-indigo-100 transition-all active:scale-[0.98]" disabled={isAdding || !name.trim()}>
-            <Plus className="h-5 w-5 ml-2" /> הוסף למלאי הקבוע
+            <Plus className="h-5 w-5 ml-2" /> הוסף למלאי
           </Button>
         </form>
       </div>
