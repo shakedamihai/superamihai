@@ -48,7 +48,9 @@ export function SortableProductRow({
   const lactoseFree = isLactoseFree(product.product_name);
   const unitDisplay = formatUnit(product.unit);
   const missingQuantity = Math.max(0, product.base_quantity - product.current_stock);
-  const stockInfoText = missingQuantity > 0 ? `חסר ${missingQuantity} ${unitDisplay}` : "המלאי מלא";
+  
+  // כאן תיקנתי את הטקסט המוזר שביקשת להחליף
+  const stockInfoText = missingQuantity > 0 ? `חסר ${missingQuantity} ${unitDisplay}` : "במלאי";
 
   return (
     <div
@@ -97,7 +99,6 @@ export function SortableProductRow({
 
       <div className="flex items-center gap-1">
         <button onClick={onEdit} className="p-2 text-muted-foreground/40 hover:text-primary rounded-lg"><Pencil className="h-4 w-4" /></button>
-        {/* העברת אירוע המחיקה מחוץ לטווח הגרירה */}
         <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 text-muted-foreground/40 hover:text-destructive rounded-lg"><Trash2 className="h-4 w-4" /></button>
       </div>
     </div>
