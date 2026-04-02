@@ -8,16 +8,30 @@ import { DepartmentCombobox } from "./DepartmentCombobox";
 import { UnitCombobox } from "./UnitCombobox";
 import { autoCategorize, useDepartments } from "@/hooks/useDepartments";
 
-export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartment }: any) {
+interface AddProductViewProps {
+  onAdd: (product: {
+    product_name: string;
+    department: string;
+    base_quantity: number;
+    current_stock?: number;
+    is_one_time?: boolean;
+    unit?: string;
+  }) => void;
+  isAdding: boolean;
+  departmentNames: string[];
+  onAddDepartment: (name: string) => void;
+}
+
+export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartment }: AddProductViewProps) {
   const { syncStandardDepartments } = useDepartments();
   const [name, setName] = useState("");
   const [department, setDepartment] = useState<string>(departmentNames[0] || "כללי");
   const [unit, setUnit] = useState("יחידות");
   const [baseQty, setBaseQty] = useState(1);
   const [isOneTime, setIsOneTime] = useState(false);
+  const [quickName, setQuickName] = useState("");
   const [isManualOverride, setIsManualOverride] = useState(false);
 
-  // לוגיקה חכמה: איפוס דריסה ידנית כשהשם נמחק או מוחלף בטקסט חדש (אורך 0 או 1)
   useEffect(() => {
     if (name.length <= 1) {
       setIsManualOverride(false);
@@ -26,10 +40,12 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
     if (name.trim() && !isManualOverride) {
       const category = autoCategorize(name.trim());
       if (category !== "כללי" || department === "כללי") {
-        setDepartment(category);
+        if (department !== category) {
+          setDepartment(category);
+        }
       }
     }
-  }, [name, isManualOverride]);
+  }, [name, isManualOverride, department]);
 
   const getStep = (u: string) => {
     const l = u.toLowerCase();
@@ -37,6 +53,9 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
     if (l.includes("גרם") || l.includes('מ"ל')) return 100;
     return 1;
   };
+
+  const step = getStep(unit);
+  const min = step;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,21 +69,53 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
       unit: isOneTime ? "יחידות" : unit,
     });
     setName("");
-    setBaseQty(1);
+    setBaseQty(unit.includes("גרם") ? 100 : 1);
     setIsManualOverride(false);
+  };
+
+  const handleQuickAdd = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!quickName.trim()) return;
+    const category = autoCategorize(quickName.trim());
+    onAdd({
+      product_name: quickName.trim(),
+      department: category,
+      base_quantity: 1,
+      current_stock: 0,
+      is_one_time: true,
+      unit: "יחידות",
+    });
+    setQuickName("");
   };
 
   return (
     <div className="space-y-6 animate-slide-in font-sans">
       <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between">
         <span className="text-indigo-900 text-sm font-medium">רוצה לסנכרן את כל המחלקות החדשות?</span>
-        <Button size="sm" onClick={() => syncStandardDepartments.mutate()} className="bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-100 rounded-xl gap-2">
-          <RefreshCw className="h-4 w-4" /> סנכרן
+        <Button 
+          size="sm" 
+          onClick={() => syncStandardDepartments.mutate()} 
+          disabled={syncStandardDepartments.isPending}
+          className="bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-100 rounded-xl gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${syncStandardDepartments.isPending ? 'animate-spin' : ''}`} /> 
+          סנכרן
         </Button>
       </div>
 
       <div className="bg-white rounded-[1.5rem] border border-slate-200 p-6 shadow-sm">
-        <h3 className="font-bold text-slate-800 mb-5">הוספת מוצר</h3>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="p-1.5 bg-amber-50 rounded-lg"><Zap className="h-4 w-4 text-amber-500 fill-amber-500" /></div>
+          <h3 className="font-bold text-slate-800">הוספה מהירה (חד-פעמי)</h3>
+        </div>
+        <form onSubmit={handleQuickAdd} className="flex gap-2">
+          <Input value={quickName} onChange={(e) => setQuickName(e.target.value)} placeholder="למשל: סבון כלים" className="flex-1 rounded-xl bg-slate-50 h-12" />
+          <Button type="submit" size="icon" disabled={isAdding || !quickName.trim()} className="h-12 w-12 rounded-xl"><Plus className="h-5 w-5" /></Button>
+        </form>
+      </div>
+
+      <div className="bg-white rounded-[1.5rem] border border-slate-200 p-6 shadow-sm">
+        <h3 className="font-bold text-slate-800 mb-5">הוספת מוצר קבוע</h3>
         <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
             <Label>שם המוצר</Label>
@@ -90,11 +141,11 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
             <div className="space-y-2">
               <Label>כמות בסיס</Label>
               <div className="flex items-center gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-100">
-                <button type="button" onClick={() => setBaseQty(Math.max(0.1, Number((baseQty - getStep(unit)).toFixed(2))))} className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center">
+                <button type="button" onClick={() => setBaseQty(Math.max(min, Number((baseQty - step).toFixed(2))))} className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center">
                   <Minus className="h-5 w-5" />
                 </button>
-                <div className="flex-1 text-center"><span className="text-2xl font-black">{baseQty}</span><span className="mr-2 text-sm text-slate-500">{unit}</span></div>
-                <button type="button" onClick={() => setBaseQty(Number((baseQty + getStep(unit)).toFixed(2)))} className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center">
+                <div className="flex-1 text-center"><span className="text-2xl font-black text-slate-800">{baseQty}</span><span className="mr-2 text-sm text-slate-500">{unit}</span></div>
+                <button type="button" onClick={() => setBaseQty(Number((baseQty + step).toFixed(2)))} className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center">
                   <Plus className="h-5 w-5" />
                 </button>
               </div>
@@ -106,8 +157,8 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
             <Switch id="one-time" checked={isOneTime} onCheckedChange={setIsOneTime} />
           </div>
 
-          <Button type="submit" className="w-full h-14 rounded-2xl bg-indigo-600 text-white font-black text-lg" disabled={isAdding || !name.trim()}>
-            <Plus className="h-5 w-5 ml-2" /> הוסף למלאי
+          <Button type="submit" className="w-full h-14 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black text-lg shadow-md shadow-indigo-100 transition-all active:scale-[0.98]" disabled={isAdding || !name.trim()}>
+            <Plus className="h-5 w-5 ml-2" /> הוסף למלאי הקבוע
           </Button>
         </form>
       </div>
