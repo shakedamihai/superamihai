@@ -1,4 +1,3 @@
-
 import { 
   Copy, CheckCircle2, ChevronDown, Trash2, Check, Search, X,
   Beef, Carrot, Milk, Snowflake, Sparkles, Wheat, CupSoda, Baby, ShoppingBag, 
@@ -26,6 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+// מילון הגדרות קבוע למחלקות (זהה למזווה)
 const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> = {
   "ירקות": { icon: Carrot, color: "text-emerald-500", border: "border-r-emerald-500" },
   "פירות": { icon: Apple, color: "text-pink-500", border: "border-r-pink-500" },
@@ -34,7 +34,7 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "דגים": { icon: Fish, color: "text-cyan-500", border: "border-r-cyan-500" },
   "קפואים": { icon: Snowflake, color: "text-sky-400", border: "border-r-sky-400" },
   "מזווה ושימורים": { icon: Package, color: "text-orange-500", border: "border-r-orange-500" },
-  "תבלינים ואפייה": { icon: ChefHat, color: "text-amber-600", border: "border-r-amber-600" },
+  "תבלינים ואפייה": { icon: UtensilsCrossed, color: "text-amber-600", border: "border-r-amber-600" },
   "מאפייה ולחם": { icon: Wheat, color: "text-yellow-500", border: "border-r-yellow-500" },
   "חטיפים ומתוקים": { icon: Candy, color: "text-purple-500", border: "border-r-purple-500" },
   "משקאות": { icon: CupSoda, color: "text-indigo-500", border: "border-r-indigo-500" },
@@ -44,12 +44,10 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "תינוקות": { icon: Baby, color: "text-teal-500", border: "border-r-teal-500" },
   "פיצוחים ופירות יבשים": { icon: Citrus, color: "text-orange-700", border: "border-r-orange-700" },
   "מעדניה": { icon: ChefHat, color: "text-violet-600", border: "border-r-violet-600" },
-  "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" }, 
+  "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
   "כללי": { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-400" },
 };
 
-
-// פונקציית עזר ליחידות מידה - המרה ללשון רבים וקיצורים
 const formatUnit = (unit?: string) => {
   if (!unit || unit.trim() === "") return "יחידות";
   const u = unit.toLowerCase();
@@ -68,25 +66,24 @@ const formatUnit = (unit?: string) => {
   return unit;
 };
 
+// התיקון הקריטי! החזרתי את הפרופס המקוריים שהיו חסרים/שגויים
 interface ShoppingListViewProps {
   shoppingByDepartment: Record<string, Product[]>;
   shoppingList: Product[];
-  departmentOrder: string[];
   onCopyList: () => void;
   onFinishChecked: (checkedIds: Set<string>) => void;
   onDeleteProduct: (id: string) => void;
-  onUpdateProduct: (updates: { id: string; current_stock?: number }) => void;
+  onUpdateStock: (id: string, stock: number) => void;
   isFinishing: boolean;
 }
 
 export function ShoppingListView({
   shoppingByDepartment,
   shoppingList,
-  departmentOrder,
   onCopyList,
   onFinishChecked,
   onDeleteProduct,
-  onUpdateProduct,
+  onUpdateStock,
   isFinishing,
 }: ShoppingListViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -104,25 +101,22 @@ export function ShoppingListView({
     if (deleteTarget.is_one_time) {
       onDeleteProduct(deleteTarget.id);
     } else {
-      onUpdateProduct({ id: deleteTarget.id, current_stock: deleteTarget.base_quantity });
+      // עדכון מלאי חזרה ל-100%
+      onUpdateStock(deleteTarget.id, deleteTarget.base_quantity);
     }
     setDeleteTarget(null);
   };
 
+  const deptKeys = useMemo(() => Object.keys(shoppingByDepartment).sort(), [shoppingByDepartment]);
+
   const filteredDepts = useMemo(() => {
-    const keys = Object.keys(shoppingByDepartment);
-    keys.sort((a, b) => {
-      const idxA = departmentOrder.indexOf(a);
-      const idxB = departmentOrder.indexOf(b);
-      return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
-    });
-    if (!searchQuery) return keys;
-    return keys.filter(dept => {
+    if (!searchQuery) return deptKeys;
+    return deptKeys.filter(dept => {
       const matchesDept = dept.toLowerCase().includes(lowerQuery);
       const items = shoppingByDepartment[dept] || [];
       return matchesDept || items.some(p => p.product_name?.toLowerCase().includes(lowerQuery));
     });
-  }, [shoppingByDepartment, searchQuery, lowerQuery, departmentOrder]);
+  }, [deptKeys, shoppingByDepartment, searchQuery, lowerQuery]);
 
   if (shoppingList.length === 0) {
     return (
@@ -189,7 +183,7 @@ export function ShoppingListView({
           const items = shoppingByDepartment[deptName];
           const displayItems = isSearching ? (deptName.toLowerCase().includes(lowerQuery) ? items : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))) : items;
           
-          const config = DEPT_CONFIG[deptName] || { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-200" };
+          const config = DEPT_CONFIG[deptName] || DEPT_CONFIG["כללי"];
           const Icon = config.icon;
 
           return (
@@ -256,10 +250,11 @@ export function ShoppingListView({
             <AlertDialogAction className="rounded-xl px-6 py-5 bg-red-500 hover:bg-red-600 text-white font-bold" onClick={confirmDelete}>
               {deleteTarget?.is_one_time ? 'מחק מוצר' : 'עדכן מלאי והסר'}
             </AlertDialogAction>
-            <AlertDialogCancel className="rounded-xl px-6 py-5 font-medium">ביטול</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-xl px-6 py-5 font-medium border border-slate-200">ביטול</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
     </div>
   );
 }
