@@ -5,48 +5,18 @@ import {
 } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { Department } from "@/hooks/useDepartments";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState, useMemo, useEffect, useRef } from "react";
 import { EditProductDialog } from "./EditProductDialog";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogFooter,
-} from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  DndContext,
-  closestCenter,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  DragEndEvent,
-  DragStartEvent,
-  MeasuringStrategy,
+  DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, 
+  DragEndEvent, DragStartEvent, MeasuringStrategy, DragOverlay, defaultDropAnimationSideEffects
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  verticalListSortingStrategy,
-  arrayMove,
-  useSortable,
-} from "@dnd-kit/sortable";
+import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableProductRow } from "./SortableProductRow";
 
@@ -81,7 +51,7 @@ interface PantryCheckViewProps {
   onUpdateProduct: (updates: { id: string; product_name?: string; department?: string; base_quantity?: number; unit?: string }) => void;
   onDeleteProduct: (id: string) => void;
   onReorderProducts: (updates: { id: string; sort_order: number }[]) => void;
-  onRenameDepartment: (oldName: string, newName: string) => void;
+  onRenameDepartment?: (oldName: string, newName: string) => void;
   onReorderDepartments: (updates: { id: string; sort_order: number }[]) => void;
   departmentNames: string[];
   onAddDepartment: (name: string) => void;
@@ -99,10 +69,10 @@ function SortableDepartmentItem({
   children: React.ReactNode 
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `dept-${dept.id}`, disabled });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1, zIndex: isDragging ? 50 : 1, position: 'relative' as const };
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.3 : 1, zIndex: isDragging ? 0 : 1, position: 'relative' as const };
   
   return (
-    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center">
+    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center scroll-mt-6">
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
         <div 
           onPointerDown={onPrepareDrag} 
@@ -141,13 +111,12 @@ export function PantryCheckView({
   const [manageUnitsOpen, setManageUnitsOpen] = useState(false);
   
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [isPreparingDrag, setIsPreparingDrag] = useState(false); // סטייט חדש וחשוב!
+  const [isPreparingDrag, setIsPreparingDrag] = useState(false);
 
   const isSearching = searchQuery.length > 0;
   const isDraggingDept = activeId?.startsWith("dept-");
   const forceCollapse = isPreparingDrag || isDraggingDept;
 
-  // ביטול ההכנה לגרירה אם המשתמש רק נגע ושחרר מבלי לגרור
   useEffect(() => {
     const handlePointerUp = () => setIsPreparingDrag(false);
     window.addEventListener("pointerup", handlePointerUp);
@@ -160,7 +129,7 @@ export function PantryCheckView({
 
   const allUsedUnits = useMemo(() => {
     const units = new Set<string>(SYSTEM_UNITS);
-    Object.values(productsByDepartment).flat().forEach(p => { if (p.unit) units.add(p.unit); });
+    Object.values(productsByDepartment || {}).flat().forEach((p) => { if (p.unit) units.add(p.unit); });
     return Array.from(units).sort((a, b) => (SYSTEM_UNITS.includes(a) ? -1 : 1));
   }, [productsByDepartment]);
 
@@ -173,19 +142,38 @@ export function PantryCheckView({
   }, [productsByDepartment]);
 
   const sortedDepts = useMemo(() => {
-    return [...departments].filter(d => baseRecurringByDept[d.name]).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    return [...(departments || [])].filter(d => baseRecurringByDept[d.name]).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [departments, baseRecurringByDept]);
 
   const [localDepts, setLocalDepts] = useState<Department[]>(sortedDepts);
   const [localRecurring, setLocalRecurring] = useState<Record<string, Product[]>>(baseRecurringByDept);
 
-  // סנכרון רק כשלא גוררים, כדי למנוע את הקפיצה חזרה למקום
   useEffect(() => { 
     if (!isDraggingDept && !isPreparingDrag) {
       setLocalDepts(sortedDepts);
       setLocalRecurring(baseRecurringByDept);
     }
   }, [sortedDepts, baseRecurringByDept, isDraggingDept, isPreparingDrag]);
+
+  // פונקציות הניהול של היחידות שחזרו למקומן הבטוח
+  const handleUpdateUnit = (oldUnit: string, newUnit: string) => {
+    if (SYSTEM_UNITS.includes(oldUnit)) return;
+    Object.values(productsByDepartment || {}).flat().filter(p => p.unit === oldUnit).forEach(p => {
+      onUpdateProduct({ id: p.id, unit: newUnit });
+    });
+  };
+
+  const handleDeleteUnit = (unitToDelete: string) => {
+    if (SYSTEM_UNITS.includes(unitToDelete)) return;
+    Object.values(productsByDepartment || {}).flat().filter(p => p.unit === unitToDelete).forEach(p => {
+      onUpdateProduct({ id: p.id, unit: "יחידות" });
+    });
+  };
+
+  const activeDept = isDraggingDept ? localDepts.find(d => `dept-${d.id}` === activeId) : null;
+  const activeDeptConfig = activeDept ? (DEPT_CONFIG[activeDept.name] || DEPT_CONFIG["כללי"]) : null;
+  const ActiveDeptIcon = activeDeptConfig?.icon || ShoppingBag;
+  const activeItemsCount = activeDept ? (localRecurring[activeDept.name]?.length || 0) : 0;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), 
@@ -206,7 +194,6 @@ export function PantryCheckView({
     const activeStr = String(active.id);
     const overStr = String(over.id);
 
-    // גרירת מחלקה
     if (activeStr.startsWith("dept-") && overStr.startsWith("dept-")) {
       const aId = activeStr.replace("dept-", "");
       const oId = overStr.replace("dept-", "");
@@ -215,10 +202,9 @@ export function PantryCheckView({
       
       if (oldIdx !== -1 && newIdx !== -1) {
         const reordered = arrayMove(localDepts, oldIdx, newIdx);
-        setLocalDepts(reordered); // עדכון מיידי כדי שלא יקפוץ אחורה
+        setLocalDepts(reordered);
         onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
         
-        // גלילה חלקה למיקום החדש
         setTimeout(() => {
           document.getElementById(`dept-wrapper-${aId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 150);
@@ -226,7 +212,6 @@ export function PantryCheckView({
       return;
     }
 
-    // גרירת מוצר
     let foundDeptName: string | null = null;
     for (const [name, items] of Object.entries(localRecurring)) {
       if (items.some((p) => p.id === activeStr)) { foundDeptName = name; break; }
@@ -255,7 +240,6 @@ export function PantryCheckView({
   }, [localDepts, localRecurring, searchQuery, lowerQuery]);
 
   return (
-    // min-h-[150vh] מונע מהמסך לקפוץ למעלה כשהכל מתכווץ
     <div className="w-full flex flex-col items-center py-4 min-h-[150vh] bg-slate-50/50 font-sans pb-12">
       <div className="w-full max-w-[calc(100vw-32px)] space-y-6">
         <div className="relative bg-white border border-slate-200 shadow-sm rounded-[2rem] p-6 font-sans">
@@ -270,7 +254,6 @@ export function PantryCheckView({
         </div>
 
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}>
-          {/* ה-gap-4 כאן מחליף את כל ה-Margins ועושה את הריווח יציב וברור בגרירה */}
           <div className="flex flex-col gap-4 w-full">
             <SortableContext items={displayDepts.map(d => `dept-${d.id}`)} strategy={verticalListSortingStrategy}>
               {displayDepts.map((dept) => {
@@ -313,6 +296,28 @@ export function PantryCheckView({
               })}
             </SortableContext>
           </div>
+
+          <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: "0.4" } } }) }}>
+            {activeDept && activeDeptConfig ? (
+              <div className="w-full flex justify-center opacity-100 drop-shadow-2xl">
+                <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
+                  <button className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 shadow-sm cursor-grabbing">
+                    <GripVertical className="h-5 w-5 opacity-50" />
+                  </button>
+                  <div className={`flex-1 bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${activeDeptConfig.border}`}>
+                    <div className="w-full flex items-center justify-between px-4 py-4 font-bold">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-slate-50"><ActiveDeptIcon className={`h-5 w-5 ${activeDeptConfig.color}`} /></div>
+                        <span className="text-lg text-slate-800">{activeDept.name}</span>
+                        <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{activeItemsCount}</span>
+                      </div>
+                      <ChevronDown className="h-5 w-5 text-slate-300" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
+          </DragOverlay>
         </DndContext>
       </div>
 
