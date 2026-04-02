@@ -39,6 +39,7 @@ import {
   useSensors,
   DragEndEvent,
   DragStartEvent,
+  DragOverlay,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -94,14 +95,19 @@ const getDeptIcon = (name: string) => {
   return ShoppingBag;
 };
 
-function SortableDepartmentItem({ dept, disabled, children }: { dept: Department; disabled?: boolean; children: React.ReactNode }) {
+function SortableDepartmentItem({ dept, disabled, isDragOverlay, children }: { dept: Department; disabled?: boolean; isDragOverlay?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
     id: `dept-${dept.id}`,
     disabled: disabled
   });
-  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.8 : 1, zIndex: isDragging ? 50 : undefined };
+  const style = { 
+    transform: CSS.Transform.toString(transform), 
+    transition, 
+    opacity: isDragging ? 0.3 : 1, 
+    zIndex: isDragOverlay ? 50 : undefined,
+  };
   return (
-    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center mb-5 transition-transform">
+    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className={`w-full flex justify-center mb-5 transition-transform ${isDragOverlay ? 'shadow-xl' : ''}`}>
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
         <button {...attributes} {...listeners} className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 touch-none shadow-sm"><GripVertical className="h-5 w-5 opacity-50" /></button>
         <div className="flex-1 overflow-hidden">{children}</div>
@@ -308,6 +314,32 @@ export function PantryCheckView({
               );
             })}
           </div>
+          <DragOverlay dropAnimation={null}>
+            {activeId && activeId.startsWith("dept-") ? (() => {
+              const draggedDeptId = activeId.replace("dept-", "");
+              const draggedDept = localDepts.find(d => d.id === draggedDeptId);
+              if (!draggedDept) return null;
+              const Icon = getDeptIcon(draggedDept.name);
+              const { borderClass, iconClass } = deptColors[draggedDept.name] || COLORS[0];
+              const items = localRecurring[draggedDept.name] || [];
+              return (
+                <div className="w-full flex justify-center">
+                  <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
+                    <div className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 shadow-sm">
+                      <GripVertical className="h-5 w-5 opacity-50" />
+                    </div>
+                    <div className={`flex-1 bg-white rounded-2xl shadow-lg border border-slate-100 border-r-8 ${borderClass} px-4 py-4 font-bold`}>
+                      <div className="flex items-center gap-3">
+                        <Icon className={`h-5 w-5 ${iconClass}`} />
+                        <span>{draggedDept.name}</span>
+                        <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{items.length}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })() : null}
+          </DragOverlay>
         </DndContext>
       </div>
 
