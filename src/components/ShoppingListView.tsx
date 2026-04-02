@@ -6,26 +6,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Product } from "@/hooks/useProducts";
-import { isLactoseFree } from "@/hooks/useDepartments";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
+import { isLactoseFree, useDepartments } from "@/hooks/useDepartments";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState, useMemo } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
-// מילון הגדרות קבוע למחלקות (זהה למזווה)
 const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> = {
   "ירקות": { icon: Carrot, color: "text-emerald-500", border: "border-r-emerald-500" },
   "פירות": { icon: Apple, color: "text-pink-500", border: "border-r-pink-500" },
@@ -66,14 +51,14 @@ const formatUnit = (unit?: string) => {
   return unit;
 };
 
-// התיקון הקריטי! החזרתי את הפרופס המקוריים שהיו חסרים/שגויים
 interface ShoppingListViewProps {
   shoppingByDepartment: Record<string, Product[]>;
   shoppingList: Product[];
   onCopyList: () => void;
   onFinishChecked: (checkedIds: Set<string>) => void;
   onDeleteProduct: (id: string) => void;
-  onUpdateStock: (id: string, stock: number) => void;
+  onUpdateProduct?: (updates: { id: string; current_stock?: number }) => void; // תמיכה במחיקה עתידית
+  onUpdateStock: (id: string, stock: number) => void; // שמירה על הפרופ הקיים לתאימות
   isFinishing: boolean;
 }
 
@@ -84,8 +69,10 @@ export function ShoppingListView({
   onFinishChecked,
   onDeleteProduct,
   onUpdateStock,
+  onUpdateProduct,
   isFinishing,
 }: ShoppingListViewProps) {
+  const { departments } = useDepartments(); // משיכת סדר המחלקות ישירות מהמסד הנתונים
   const [searchQuery, setSearchQuery] = useState("");
   const [openDepts, setOpenDepts] = useState<Record<string, boolean>>(() =>
     Object.keys(shoppingByDepartment).reduce((acc, d) => ({ ...acc, [d]: true }), {})
@@ -101,22 +88,35 @@ export function ShoppingListView({
     if (deleteTarget.is_one_time) {
       onDeleteProduct(deleteTarget.id);
     } else {
-      // עדכון מלאי חזרה ל-100%
-      onUpdateStock(deleteTarget.id, deleteTarget.base_quantity);
+      if (onUpdateProduct) {
+        onUpdateProduct({ id: deleteTarget.id, current_stock: deleteTarget.base_quantity });
+      } else {
+        onUpdateStock(deleteTarget.id, deleteTarget.base_quantity);
+      }
     }
     setDeleteTarget(null);
   };
 
-  const deptKeys = useMemo(() => Object.keys(shoppingByDepartment).sort(), [shoppingByDepartment]);
-
+  // מיון המחלקות בדיוק לפי הסדר שמוגדר במזווה (departments.sort_order)
   const filteredDepts = useMemo(() => {
-    if (!searchQuery) return deptKeys;
-    return deptKeys.filter(dept => {
+    const keys = Object.keys(shoppingByDepartment);
+    
+    keys.sort((a, b) => {
+      const deptA = departments.find(d => d.name === a);
+      const deptB = departments.find(d => d.name === b);
+      const orderA = deptA ? deptA.sort_order : 999;
+      const orderB = deptB ? deptB.sort_order : 999;
+      return orderA - orderB;
+    });
+
+    if (!searchQuery) return keys;
+    
+    return keys.filter(dept => {
       const matchesDept = dept.toLowerCase().includes(lowerQuery);
       const items = shoppingByDepartment[dept] || [];
       return matchesDept || items.some(p => p.product_name?.toLowerCase().includes(lowerQuery));
     });
-  }, [deptKeys, shoppingByDepartment, searchQuery, lowerQuery]);
+  }, [shoppingByDepartment, searchQuery, lowerQuery, departments]);
 
   if (shoppingList.length === 0) {
     return (
@@ -167,8 +167,8 @@ export function ShoppingListView({
                       <AlertDialogDescription className="text-right">הפריטים שסומנו יעברו למלאי.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
-                      <AlertDialogAction className="rounded-xl" onClick={() => { onFinishChecked(checked); setChecked(new Set()); }}>עדכן מלאי</AlertDialogAction>
-                      <AlertDialogCancel className="rounded-xl">ביטול</AlertDialogCancel>
+                      <AlertDialogAction className="rounded-xl px-6 py-5 bg-indigo-600 text-white font-bold" onClick={() => { onFinishChecked(checked); setChecked(new Set()); }}>עדכן מלאי</AlertDialogAction>
+                      <AlertDialogCancel className="rounded-xl px-6 py-5 border-slate-200">ביטול</AlertDialogCancel>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -217,7 +217,7 @@ export function ShoppingListView({
                             <div className="flex items-center gap-2 mt-0.5">
                               <span className="text-xs text-primary font-bold">{qty} {unitLabel}</span>
                               {lactoseFree && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">ללא לקטוז</span>}
-                              {p.is_one_time && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">מוצר חד-פעמי</span>}
+                              {p.is_one_time && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">חד-פעמי</span>}
                             </div>
                           </div>
                         </div>
@@ -254,7 +254,6 @@ export function ShoppingListView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </div>
   );
 }
