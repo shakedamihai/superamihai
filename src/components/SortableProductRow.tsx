@@ -12,10 +12,8 @@ interface SortableProductRowProps {
   onUpdateStock: (id: string, stock: number) => void;
 }
 
-// פונקציית עזר להמרת יחידות מידה ללשון רבים ולקיצורים תקניים
 const formatUnit = (unit?: string) => {
   if (!unit) return "יחידות";
-  
   const lowerUnit = unit.toLowerCase();
   if (lowerUnit.includes("קילו")) return "ק\"ג";
   if (lowerUnit.includes("יחיד")) return "יחידות";
@@ -23,8 +21,7 @@ const formatUnit = (unit?: string) => {
   if (lowerUnit.includes("מארז")) return "מארזים";
   if (lowerUnit.includes("בקבוק")) return "בקבוקים";
   if (lowerUnit.includes("פחי")) return "פחיות";
-  
-  return unit; // מחזיר את המקור אם לא זיהה (למשל "ליטר" או "גרם")
+  return unit;
 };
 
 export function SortableProductRow({
@@ -51,9 +48,7 @@ export function SortableProductRow({
   const lactoseFree = isLactoseFree(product.product_name);
   const unitDisplay = formatUnit(product.unit);
   const missingQuantity = Math.max(0, product.base_quantity - product.current_stock);
-  const stockInfoText = missingQuantity > 0 
-    ? `חסר ${missingQuantity} ${unitDisplay}` 
-    : "המלאי מלא";
+  const stockInfoText = missingQuantity > 0 ? `חסר ${missingQuantity} ${unitDisplay}` : "המלאי מלא";
 
   return (
     <div
@@ -81,46 +76,29 @@ export function SortableProductRow({
               {stockInfoText}
             </span>
             {lactoseFree && (
-              <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">
-                ללא לקטוז
-              </span>
+              <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">ללא לקטוז</span>
             )}
             {product.is_one_time && (
-              <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
-                מוצר חד-פעמי
-              </span>
+              <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">מוצר חד-פעמי</span>
             )}
           </div>
         </div>
       </div>
 
       <div className="flex items-center gap-2 px-2 border-x border-slate-100 mx-2">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 rounded-full"
-          onClick={() => onUpdateStock(product.id, Math.max(0, product.current_stock - 1))}
-        >
+        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => onUpdateStock(product.id, Math.max(0, product.current_stock - 1))}>
           <Minus className="h-3 w-3" />
         </Button>
-        
-        <span className="w-4 text-center font-black text-sm">
-          {product.current_stock}
-        </span>
-
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-8 w-8 rounded-full"
-          onClick={() => onUpdateStock(product.id, product.current_stock + 1)}
-        >
+        <span className="w-4 text-center font-black text-sm">{product.current_stock}</span>
+        <Button variant="outline" size="icon" className="h-8 w-8 rounded-full" onClick={() => onUpdateStock(product.id, product.current_stock + 1)}>
           <Plus className="h-3 w-3" />
         </Button>
       </div>
 
       <div className="flex items-center gap-1">
         <button onClick={onEdit} className="p-2 text-muted-foreground/40 hover:text-primary rounded-lg"><Pencil className="h-4 w-4" /></button>
-        <button onClick={onDelete} className="p-2 text-muted-foreground/40 hover:text-destructive rounded-lg"><Trash2 className="h-4 w-4" /></button>
+        {/* העברת אירוע המחיקה מחוץ לטווח הגרירה */}
+        <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="p-2 text-muted-foreground/40 hover:text-destructive rounded-lg"><Trash2 className="h-4 w-4" /></button>
       </div>
     </div>
   );
