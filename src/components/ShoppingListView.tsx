@@ -51,13 +51,12 @@ const formatUnit = (unit?: string) => {
   return unit;
 };
 
-// טיפוס חדש למוצר "מאוחד" שמחזיק גם את הקבוע וגם את החד-פעמי יחד
 type MergedProduct = {
-  id: string; // מזהה ראשי ל-React
+  id: string;
   product_name: string;
   totalQty: number;
   unit: string;
-  ids: string[]; // כל המזהים האמיתיים במסד הנתונים
+  ids: string[];
   is_one_time_only: boolean;
   has_one_time_extra: boolean;
   products: Product[];
@@ -90,7 +89,6 @@ export function ShoppingListView({
     Object.keys(shoppingByDepartment).reduce((acc, d) => ({ ...acc, [d]: true }), {})
   );
   
-  // checked שומר את כל המזהים המקוריים
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<MergedProduct | null>(null);
 
@@ -202,10 +200,34 @@ export function ShoppingListView({
                   <AlertDialogContent className="rounded-3xl p-6 font-sans">
                     <AlertDialogHeader>
                       <AlertDialogTitle className="text-right">סיימת לקנות?</AlertDialogTitle>
-                      <AlertDialogDescription className="text-right">הפריטים שסומנו יעברו למלאי והתוספות החד-פעמיות יימחקו.</AlertDialogDescription>
+                      <AlertDialogDescription className="text-right">הפריטים שסומנו יעברו למלאי והתוספות החד-פעמיות יימחקו לחלוטין.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
-                      <AlertDialogAction className="rounded-xl px-6 py-5 bg-indigo-600 text-white font-bold" onClick={() => { onFinishChecked(checked); setChecked(new Set()); }}>עדכן מלאי</AlertDialogAction>
+                      {/* התיקון החכם למניעת מוצרי רפאים במסד הנתונים */}
+                      <AlertDialogAction className="rounded-xl px-6 py-5 bg-indigo-600 text-white font-bold" onClick={() => { 
+                        const regularIds = new Set<string>();
+                        
+                        checked.forEach(id => {
+                          let foundProduct: Product | undefined;
+                          for (const items of Object.values(shoppingByDepartment)) {
+                            const p = items.find(i => i.id === id);
+                            if (p) { foundProduct = p; break; }
+                          }
+                          
+                          if (foundProduct) {
+                            if (foundProduct.is_one_time) {
+                              onDeleteProduct(foundProduct.id); // מחיקה מוחלטת
+                            } else {
+                              regularIds.add(foundProduct.id); // עדכון מלאי
+                            }
+                          }
+                        });
+                        
+                        if (regularIds.size > 0) {
+                          onFinishChecked(regularIds);
+                        }
+                        setChecked(new Set()); 
+                      }}>עדכן מלאי</AlertDialogAction>
                       <AlertDialogCancel className="rounded-xl px-6 py-5 border-slate-200 font-medium">ביטול</AlertDialogCancel>
                     </AlertDialogFooter>
                   </AlertDialogContent>
@@ -221,7 +243,6 @@ export function ShoppingListView({
           const rawItems = shoppingByDepartment[deptName];
           const filteredRaw = isSearching ? (deptName.toLowerCase().includes(lowerQuery) ? rawItems : rawItems.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))) : rawItems;
           
-          // --- אלגוריתם הקיבוץ: מחבר מוצרים עם אותו שם בדיוק ---
           const mergedMap = new Map<string, MergedProduct>();
           filteredRaw.forEach(p => {
             const key = p.product_name.trim().toLowerCase();
@@ -248,7 +269,6 @@ export function ShoppingListView({
             }
           });
           const mergedItems = Array.from(mergedMap.values());
-          // -----------------------------
 
           const config = DEPT_CONFIG[deptName] || DEPT_CONFIG["כללי"];
           const Icon = config.icon;
@@ -266,7 +286,6 @@ export function ShoppingListView({
               <CollapsibleContent className="px-3 pb-3">
                 <div className="flex flex-col gap-2 border-t border-border/50 pt-3">
                   {mergedItems.map((merged) => {
-                    // פריט מסומן רק אם *כל* החלקים שלו סומנו
                     const isChecked = merged.ids.every(id => checked.has(id));
                     const lactoseFree = isLactoseFree(merged.product_name);
                     const unitLabel = formatUnit(merged.unit);
@@ -281,7 +300,7 @@ export function ShoppingListView({
                             merged.ids.forEach(id => next.add(id));
                           }
                           setChecked(next);
-                        }}>
+                        }} >
                           <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${isChecked ? "bg-primary border-primary text-white" : "bg-white border-muted-foreground/30"}`}>{isChecked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}</div>
                           <div className="flex flex-col text-right">
                             <span className={`text-[1.05rem] font-medium ${isChecked ? "line-through text-muted-foreground" : ""}`}>{merged.product_name}</span>
