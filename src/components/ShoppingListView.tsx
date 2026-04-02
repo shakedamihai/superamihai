@@ -34,7 +34,7 @@ interface ShoppingListViewProps {
   isFinishing: boolean;
 }
 
-// מאגר הצבעים הייחודיים
+// מאגר הצבעים למחלקות (שומר על השפה העיצובית)
 const COLORS = [
   { borderClass: 'border-r-red-500', iconClass: 'text-red-500' },
   { borderClass: 'border-r-green-500', iconClass: 'text-green-500' },
@@ -146,7 +146,6 @@ export function ShoppingListView({
   const checkedCount = checked.size;
   const totalCount = shoppingList.length;
 
-  // --- לוגיקת החיפוש ---
   const lowerQuery = searchQuery.toLowerCase();
   
   const filteredDepts = useMemo(() => {
@@ -159,7 +158,6 @@ export function ShoppingListView({
     });
   }, [deptKeys, shoppingByDepartment, searchQuery, lowerQuery]);
 
-  // מצב ריק - כשאין בכלל מוצרים ברשימה
   if (shoppingList.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 animate-slide-in">
@@ -175,49 +173,61 @@ export function ShoppingListView({
   }
 
   return (
-    <div className="space-y-4 animate-slide-in pb-20 bg-gray-50/50 min-h-screen pt-4 px-1">
+    <div className="space-y-6 animate-slide-in pb-20 bg-gray-50/50 min-h-screen pt-4 px-1">
       
-      {/* שורת חיפוש חדשה - התאמה מושלמת למסך המלאי */}
-      <div className="relative w-full shadow-sm rounded-2xl">
-        <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-          <Search className="h-5 w-5 text-muted-foreground/70" />
-        </div>
-        <Input
-          type="text"
-          placeholder="חיפוש מחלקה או פריט..."
-          className="w-full pl-4 pr-12 py-6 rounded-2xl bg-white border-border text-lg shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
+      {/* --- אזור הפיקוד המרכזי (Dashboard) --- */}
+      {/* מעטפת נפרדת ועוצמתית שמאגדת את כל הפעולות עם צבע עדין וגבול שונה */}
+      <div className="relative bg-gradient-to-br from-blue-50/80 via-white to-blue-50/50 p-5 rounded-[2rem] shadow-sm border border-blue-100 space-y-5 overflow-hidden">
+        
+        {/* רקע דקורטיבי עדין שנותן תחושת פרימיום */}
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-40 h-40 bg-blue-100/50 rounded-full blur-3xl pointer-events-none"></div>
 
-      {/* אזור פעולות למעלה (כפתורים יפים) */}
-      <div className="bg-white p-4 rounded-3xl shadow-sm border border-border space-y-4">
-        <div className="flex items-center justify-between text-sm font-medium">
-          <span className="text-muted-foreground">התקדמות קנייה</span>
-          <span className="text-primary bg-primary/10 px-2 py-0.5 rounded-full">{checkedCount} מתוך {totalCount}</span>
-        </div>
-        <div className="h-2 w-full bg-muted rounded-full overflow-hidden">
-          <div 
-            className="h-full bg-primary transition-all duration-500 ease-out" 
-            style={{ width: `${totalCount > 0 ? (checkedCount / totalCount) * 100 : 0}%` }}
+        {/* 1. שורת חיפוש המוטמעת בתוך לוח הבקרה */}
+        <div className="relative w-full z-10">
+          <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+            <Search className="h-5 w-5 text-blue-400" />
+          </div>
+          <Input
+            type="text"
+            placeholder="חיפוש מחלקה או פריט..."
+            className="w-full pl-4 pr-12 py-6 rounded-2xl bg-white border-none shadow-[0_2px_15px_rgba(0,0,0,0.04)] text-lg focus-visible:ring-2 focus-visible:ring-blue-200"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
-        <div className="flex gap-2 pt-2">
+        {/* 2. התקדמות קנייה */}
+        <div className="space-y-2.5 z-10 relative px-1">
+          <div className="flex items-center justify-between text-sm font-bold text-blue-900/70">
+            <span>התקדמות קנייה</span>
+            <span className="bg-blue-100 text-blue-700 px-3 py-0.5 rounded-full shadow-sm">
+              {checkedCount} מתוך {totalCount}
+            </span>
+          </div>
+          <div className="h-2.5 w-full bg-blue-900/5 rounded-full overflow-hidden shadow-inner">
+            <div 
+              className="h-full bg-gradient-to-r from-blue-400 to-blue-600 transition-all duration-500 ease-out rounded-full" 
+              style={{ width: `${totalCount > 0 ? (checkedCount / totalCount) * 100 : 0}%` }}
+            />
+          </div>
+        </div>
+
+        {/* 3. כפתורי פעולה עיקריים */}
+        <div className="flex gap-3 pt-1 z-10 relative">
           <Button 
             onClick={onCopyList} 
             variant="outline" 
-            className="flex-1 gap-2 rounded-xl h-12 border-primary/20 hover:bg-primary/5 text-primary"
+            className="flex-1 gap-2 rounded-xl h-12 bg-white hover:bg-blue-50 text-blue-600 border-blue-100 shadow-sm"
           >
             <Copy className="h-4 w-4" />
             העתק רשימה
           </Button>
+          
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button 
                 variant="default" 
-                className="flex-1 gap-2 rounded-xl h-12 shadow-sm" 
+                className="flex-1 gap-2 rounded-xl h-12 bg-blue-600 hover:bg-blue-700 text-white shadow-md transition-all" 
                 disabled={isFinishing || checkedCount === 0}
               >
                 <CheckCircle2 className="h-4 w-4" />
@@ -233,7 +243,7 @@ export function ShoppingListView({
               </AlertDialogHeader>
               <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
                 <AlertDialogAction 
-                  className="rounded-xl px-6 py-5 text-md"
+                  className="rounded-xl px-6 py-5 text-md bg-blue-600 hover:bg-blue-700"
                   onClick={() => { onFinishChecked(checked); setChecked(new Set()); }}
                 >
                   עדכן מלאי
@@ -244,123 +254,131 @@ export function ShoppingListView({
           </AlertDialog>
         </div>
       </div>
+      {/* --- סוף אזור הפיקוד --- */}
 
-      {/* רשימת המחלקות המסוננת */}
-      <div className="space-y-4">
-        {filteredDepts.length === 0 && searchQuery ? (
-          <div className="text-center py-16 bg-white rounded-3xl border border-dashed shadow-sm">
-            <Search className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
-            <p className="text-muted-foreground font-medium">לא נמצאו תוצאות לחיפוש</p>
-          </div>
-        ) : (
-          filteredDepts.map((dept) => {
-            const items = shoppingByDepartment[dept];
-            const matchesDeptName = dept.toLowerCase().includes(lowerQuery);
-            
-            // חיתוך הפריטים לפי החיפוש - מציג הכל אם חיפשת מחלקה, אחרת מסנן פריטים
-            const displayItems = searchQuery 
-              ? (matchesDeptName 
-                  ? items 
-                  : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery)))
-              : items;
+      
+      {/* --- אזור רשימת הקניות --- */}
+      <div className="pt-2">
+        {/* כותרת מפרידה וברורה */}
+        <div className="flex items-center justify-between px-2 mb-4">
+          <h2 className="text-xl font-extrabold text-slate-800">מוצרים לקנייה</h2>
+          <span className="text-sm font-medium text-slate-400">{filteredDepts.length} מחלקות</span>
+        </div>
 
-            const Icon = getDeptIcon(dept);
-            const { borderClass, iconClass } = deptColors[dept] || COLORS[0];
+        <div className="space-y-4">
+          {filteredDepts.length === 0 && searchQuery ? (
+            <div className="text-center py-16 bg-white rounded-3xl border border-dashed shadow-sm">
+              <Search className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+              <p className="text-muted-foreground font-medium">לא נמצאו תוצאות לחיפוש</p>
+            </div>
+          ) : (
+            filteredDepts.map((dept) => {
+              const items = shoppingByDepartment[dept];
+              const matchesDeptName = dept.toLowerCase().includes(lowerQuery);
+              
+              const displayItems = searchQuery 
+                ? (matchesDeptName 
+                    ? items 
+                    : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery)))
+                : items;
 
-            return (
-              <Collapsible
-                key={dept}
-                // פתיחה אוטומטית כשיש חיפוש
-                open={searchQuery ? true : (openDepts[dept] !== false)}
-                onOpenChange={(open) =>
-                  setOpenDepts((prev) => ({ ...prev, [dept]: open }))
-                }
-                className={`bg-white rounded-2xl shadow-sm border border-border overflow-hidden border-r-4 ${borderClass}`}
-              >
-                <div className="flex items-center gap-1 p-1">
-                  <CollapsibleTrigger
-                    className="flex-1 flex items-center justify-between px-4 py-3 bg-transparent font-bold transition-colors"
-                  >
-                    <div className="flex items-center gap-3">
-                      <Icon className={`h-5 w-5 ${iconClass}`} />
-                      <span className="text-[1.05rem] tracking-tight text-foreground">{dept}</span>
-                      <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-black">
-                        {displayItems.length}
-                      </span>
-                    </div>
-                    <ChevronDown className={`h-5 w-5 text-muted-foreground/50 transition-transform duration-300 ${openDepts[dept] !== false || searchQuery ? "rotate-180" : ""}`} />
-                  </CollapsibleTrigger>
-                </div>
+              const Icon = getDeptIcon(dept);
+              const { borderClass, iconClass } = deptColors[dept] || COLORS[0];
 
-                <CollapsibleContent className="px-3 pb-3 space-y-2 mt-1">
-                  <div className="space-y-2 border-t border-border/50 pt-3">
-                    {displayItems.map((p) => {
-                      const qty = p.is_one_time ? 1 : Math.max(0, p.base_quantity - p.current_stock);
-                      const unit = p.unit || "יחידות";
-                      const isChecked = checked.has(p.id);
-                      const lactoseFree = isLactoseFree(p.product_name);
+              return (
+                <Collapsible
+                  key={dept}
+                  open={searchQuery ? true : (openDepts[dept] !== false)}
+                  onOpenChange={(open) =>
+                    setOpenDepts((prev) => ({ ...prev, [dept]: open }))
+                  }
+                  className={`bg-white rounded-2xl shadow-sm border border-border overflow-hidden border-r-4 ${borderClass}`}
+                >
+                  <div className="flex items-center gap-1 p-1">
+                    <CollapsibleTrigger
+                      className="flex-1 flex items-center justify-between px-4 py-3 bg-transparent font-bold transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Icon className={`h-5 w-5 ${iconClass}`} />
+                        <span className="text-[1.05rem] tracking-tight text-foreground">{dept}</span>
+                        <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-black">
+                          {displayItems.length}
+                        </span>
+                      </div>
+                      <ChevronDown className={`h-5 w-5 text-muted-foreground/50 transition-transform duration-300 ${openDepts[dept] !== false || searchQuery ? "rotate-180" : ""}`} />
+                    </CollapsibleTrigger>
+                  </div>
 
-                      return (
-                        <div
-                          key={p.id}
-                          onClick={() => toggleChecked(p.id)}
-                          className={`group flex items-center justify-between rounded-xl px-4 py-3.5 border cursor-pointer transition-all duration-200 ${
-                            isChecked
-                              ? "bg-muted/40 border-transparent opacity-60 grayscale-[0.3]"
-                              : lactoseFree
-                              ? "bg-sky-50/40 border-sky-100"
-                              : "bg-white border-gray-100 hover:border-primary/20 shadow-sm"
-                          }`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all duration-300 shadow-sm ${
+                  <CollapsibleContent className="px-3 pb-3 space-y-2 mt-1">
+                    <div className="space-y-2 border-t border-border/50 pt-3">
+                      {displayItems.map((p) => {
+                        const qty = p.is_one_time ? 1 : Math.max(0, p.base_quantity - p.current_stock);
+                        const unit = p.unit || "יחידות";
+                        const isChecked = checked.has(p.id);
+                        const lactoseFree = isLactoseFree(p.product_name);
+
+                        return (
+                          <div
+                            key={p.id}
+                            onClick={() => toggleChecked(p.id)}
+                            className={`group flex items-center justify-between rounded-xl px-4 py-3.5 border cursor-pointer transition-all duration-200 ${
                               isChecked
-                                ? "bg-primary border-primary text-primary-foreground scale-110"
-                                : "bg-white border-muted-foreground/30 group-hover:border-primary/50"
-                            }`}>
-                              {isChecked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
-                            </div>
-                            
-                            <div className="flex flex-col">
-                              <span className={`text-[1.05rem] font-medium transition-all ${isChecked ? "line-through text-muted-foreground" : "text-foreground"}`}>
-                                {p.product_name}
-                              </span>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className={`text-sm ${isChecked ? "text-muted-foreground/70" : "text-primary/80 font-bold"}`}>
-                                  {qty} {unit}
+                                ? "bg-muted/40 border-transparent opacity-60 grayscale-[0.3]"
+                                : lactoseFree
+                                ? "bg-sky-50/40 border-sky-100"
+                                : "bg-white border-gray-100 hover:border-blue-200 shadow-sm"
+                            }`}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all duration-300 shadow-sm ${
+                                isChecked
+                                  ? "bg-blue-500 border-blue-500 text-white scale-110"
+                                  : "bg-white border-muted-foreground/30 group-hover:border-blue-400"
+                              }`}>
+                                {isChecked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                              </div>
+                              
+                              <div className="flex flex-col">
+                                <span className={`text-[1.05rem] font-medium transition-all ${isChecked ? "line-through text-muted-foreground" : "text-foreground"}`}>
+                                  {p.product_name}
                                 </span>
-                                
-                                {lactoseFree && (
-                                  <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">
-                                    ללא לקטוז
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className={`text-sm ${isChecked ? "text-muted-foreground/70" : "text-blue-600 font-bold"}`}>
+                                    {qty} {unit}
                                   </span>
-                                )}
-                                {p.is_one_time && (
-                                  <span className="text-[10px] bg-secondary/20 text-secondary px-1.5 py-0.5 rounded font-medium">
-                                    חד-פעמי
-                                  </span>
-                                )}
+                                  
+                                  {lactoseFree && (
+                                    <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">
+                                      ללא לקטוז
+                                    </span>
+                                  )}
+                                  {p.is_one_time && (
+                                    <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-medium">
+                                      חד-פעמי
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
 
-                          {p.is_one_time && (
-                            <button
-                              onClick={(e) => { e.stopPropagation(); onDeleteProduct(p.id); }}
-                              className="text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            );
-          })
-        )}
+                            {p.is_one_time && (
+                              <button
+                                onClick={(e) => { e.stopPropagation(); onDeleteProduct(p.id); }}
+                                className="text-muted-foreground/40 hover:text-red-500 hover:bg-red-50 p-2 rounded-lg transition-colors"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              );
+            })
+          )}
+        </div>
       </div>
     </div>
   );
