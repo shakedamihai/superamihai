@@ -25,7 +25,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-// מילון הגדרות קבוע למחלקות - חייב להיות זהה לזה שבמזווה
+// מילון הגדרות קבוע למחלקות - כל מחלקה עם צבע ייחודי (18 מחלקות, 18 צבעים שונים)
 const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> = {
   "ירקות": { icon: Carrot, color: "text-green-500", border: "border-r-green-500" },
   "פירות": { icon: Apple, color: "text-pink-500", border: "border-r-pink-500" },
@@ -48,7 +48,7 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
 };
 
-// פונקציית עזר ליחידות מידה
+// פונקציית עזר ליחידות מידה - המרה ללשון רבים וקיצורים
 const formatUnit = (unit?: string) => {
   if (!unit || unit.trim() === "") return "יחידות";
   const u = unit.toLowerCase();
@@ -103,7 +103,6 @@ export function ShoppingListView({
     if (deleteTarget.is_one_time) {
       onDeleteProduct(deleteTarget.id);
     } else {
-      // עדכון מלאי ל-100% כדי שיחזור למזווה וייצא מהרשימה
       onUpdateProduct({ id: deleteTarget.id, current_stock: deleteTarget.base_quantity });
     }
     setDeleteTarget(null);
@@ -137,7 +136,6 @@ export function ShoppingListView({
 
   return (
     <div className="space-y-6 pb-24 bg-slate-50 min-h-screen pt-4 px-2 font-sans">
-      
       <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'}`}>
         <div className="space-y-4">
           <div className="relative w-full">
@@ -168,7 +166,7 @@ export function ShoppingListView({
                   <AlertDialogTrigger asChild>
                     <Button className="flex-1 gap-2 rounded-xl h-12 font-bold" disabled={isFinishing || checked.size === 0}><CheckCircle2 className="h-4 w-4" /> סיום</Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className="rounded-3xl p-6">
+                  <AlertDialogContent className="rounded-3xl p-6 font-sans">
                     <AlertDialogHeader>
                       <AlertDialogTitle className="text-right">סיימת לקנות?</AlertDialogTitle>
                       <AlertDialogDescription className="text-right">הפריטים שסומנו יעברו למלאי.</AlertDialogDescription>
@@ -190,7 +188,6 @@ export function ShoppingListView({
           const items = shoppingByDepartment[deptName];
           const displayItems = isSearching ? (deptName.toLowerCase().includes(lowerQuery) ? items : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))) : items;
           
-          // שליפת עיצוב מהמילון הקבוע
           const config = DEPT_CONFIG[deptName] || { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-200" };
           const Icon = config.icon;
 
@@ -262,7 +259,6 @@ export function ShoppingListView({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
     </div>
   );
 }
