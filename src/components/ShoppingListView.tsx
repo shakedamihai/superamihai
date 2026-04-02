@@ -31,6 +31,7 @@ interface ShoppingListViewProps {
   onCopyList: () => void;
   onFinishChecked: (checkedIds: Set<string>) => void;
   onDeleteProduct: (id: string) => void;
+  onUpdateProduct: (updates: { id: string; current_stock?: number }) => void; // הוספת הפונקציה למילוי המלאי
   isFinishing: boolean;
 }
 
@@ -62,10 +63,8 @@ const getDeptIcon = (name: string) => {
   return ShoppingBag;
 };
 
-// פונקציית עזר להמרת יחידות מידה ללשון רבים ולקיצורים תקניים
 const formatUnit = (unit?: string) => {
   if (!unit) return "יחידות";
-  
   const lowerUnit = unit.toLowerCase();
   if (lowerUnit.includes("קילו")) return "ק\"ג";
   if (lowerUnit.includes("יחיד")) return "יחידות";
@@ -73,7 +72,6 @@ const formatUnit = (unit?: string) => {
   if (lowerUnit.includes("מארז")) return "מארזים";
   if (lowerUnit.includes("בקבוק")) return "בקבוקים";
   if (lowerUnit.includes("פחי")) return "פחיות";
-  
   return unit;
 };
 
@@ -83,6 +81,7 @@ export function ShoppingListView({
   onCopyList,
   onFinishChecked,
   onDeleteProduct,
+  onUpdateProduct, // פונקציה חדשה
   isFinishing,
 }: ShoppingListViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,6 +89,9 @@ export function ShoppingListView({
     Object.keys(shoppingByDepartment).reduce((acc, d) => ({ ...acc, [d]: true }), {})
   );
   const [checked, setChecked] = useState<Set<string>>(new Set());
+  
+  // ניהול המחיקות
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
 
   const toggleChecked = (id: string) => {
     setChecked((prev) => {
@@ -105,12 +107,7 @@ export function ShoppingListView({
   const deptColors = useMemo(() => {
     const mapping: Record<string, typeof COLORS[0]> = {};
     const usedIndices = new Set<number>();
-    const preferences = [
-      { keys: ['ירק'], idx: 1 }, { keys: ['פיר'], idx: 6 },
-      { keys: ['חלב', 'גבינ', 'מקרר'], idx: 2 }, { keys: ['בשר', 'עוף', 'קצביה'], idx: 0 }, 
-      { keys: ['דג'], idx: 5 }, { keys: ['פארם'], idx: 4 }, 
-    ];
-
+    const preferences = [{ keys: ['ירק'], idx: 1 }, { keys: ['פיר'], idx: 6 }, { keys: ['חלב', 'גבינ', 'מקרר'], idx: 2 }, { keys: ['בשר', 'עוף', 'קצביה'], idx: 0 }, { keys: ['דג'], idx: 5 }, { keys: ['פארם'], idx: 4 }];
     deptKeys.forEach((dept) => {
       const lower = dept.toLowerCase();
       for (const pref of preferences) {
@@ -121,7 +118,6 @@ export function ShoppingListView({
         }
       }
     });
-
     deptKeys.forEach((dept) => {
       if (!mapping[dept]) {
         const availableIndex = COLORS.findIndex((_, i) => !usedIndices.has(i));
@@ -134,7 +130,6 @@ export function ShoppingListView({
 
   const isSearching = searchQuery.length > 0;
   const lowerQuery = searchQuery.toLowerCase();
-  
   const filteredDepts = useMemo(() => {
     if (!searchQuery) return deptKeys;
     return deptKeys.filter(dept => {
@@ -143,6 +138,24 @@ export function ShoppingListView({
       return matchesDeptName || items.some(p => p.product_name?.toLowerCase().includes(lowerQuery));
     });
   }, [deptKeys, shoppingByDepartment, searchQuery, lowerQuery]);
+
+  // פונקציית המחיקה החכמה
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    
+    if (deleteTarget.is_one_time) {
+      // אם חד פעמי - מוחקים באמת
+      onDeleteProduct(deleteTarget.id);
+    } else {
+      // אם רב פעמי - פשוט ממלאים לו את המלאי למקסימום
+      onUpdateProduct({ 
+        id: deleteTarget.id, 
+        current_stock: deleteTarget.base_quantity 
+      });
+    }
+    
+    setDeleteTarget(null);
+  };
 
   if (shoppingList.length === 0) {
     return (
@@ -157,25 +170,12 @@ export function ShoppingListView({
 
   return (
     <div className="space-y-6 pb-24 bg-slate-50 min-h-screen pt-4 px-2 font-sans">
-      <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${
-          isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'
-      }`}>
+      <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'}`}>
         <div className="space-y-4">
           <div className="relative w-full">
-            <div className="absolute inset-y-0 right-0 flex items-center pr-4">
-              <Search className="h-5 w-5 text-slate-400" />
-            </div>
-            <Input
-              placeholder="חיפוש פריט או מחלקה..."
-              className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            {isSearching && (
-              <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
-                <X className="h-5 w-5" />
-              </button>
-            )}
+            <div className="absolute inset-y-0 right-0 flex items-center pr-4"><Search className="h-5 w-5 text-slate-400" /></div>
+            <Input placeholder="חיפוש פריט או מחלקה..." className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            {isSearching && <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><X className="h-5 w-5" /></button>}
           </div>
 
           {!isSearching && (
@@ -190,14 +190,10 @@ export function ShoppingListView({
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button onClick={onCopyList} variant="outline" className="flex-1 gap-2 rounded-xl h-12 border-slate-200 font-bold text-slate-700">
-                  <Copy className="h-4 w-4" /> העתק
-                </Button>
+                <Button onClick={onCopyList} variant="outline" className="flex-1 gap-2 rounded-xl h-12 border-slate-200 font-bold text-slate-700"><Copy className="h-4 w-4" /> העתק</Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button className="flex-1 gap-2 rounded-xl h-12 font-bold" disabled={isFinishing || checked.size === 0}>
-                      <CheckCircle2 className="h-4 w-4" /> סיום
-                    </Button>
+                    <Button className="flex-1 gap-2 rounded-xl h-12 font-bold" disabled={isFinishing || checked.size === 0}><CheckCircle2 className="h-4 w-4" /> סיום</Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="rounded-3xl p-6">
                     <AlertDialogHeader>
@@ -217,19 +213,11 @@ export function ShoppingListView({
       </div>
 
       <div>
-        {!isSearching && (
-          <div className="flex items-center justify-between px-3 mb-4">
-            <h2 className="text-xl font-extrabold text-slate-800">מה לקנות?</h2>
-          </div>
-        )}
-
+        {!isSearching && <div className="flex items-center justify-between px-3 mb-4"><h2 className="text-xl font-extrabold text-slate-800">מה לקנות?</h2></div>}
         <div className="space-y-4">
           {filteredDepts.map((dept) => {
             const items = shoppingByDepartment[dept];
-            const displayItems = isSearching 
-              ? (dept.toLowerCase().includes(lowerQuery) ? items : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery)))
-              : items;
-
+            const displayItems = isSearching ? (dept.toLowerCase().includes(lowerQuery) ? items : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))) : items;
             const Icon = getDeptIcon(dept);
             const { borderClass, iconClass } = deptColors[dept] || COLORS[0];
 
@@ -248,8 +236,6 @@ export function ShoppingListView({
                     {displayItems.map((p) => {
                       const isChecked = checked.has(p.id);
                       const lactoseFree = isLactoseFree(p.product_name);
-                      
-                      // שימוש בפונקציה לעיצוב היחידות
                       const qty = p.is_one_time ? 1 : Math.max(0, p.base_quantity - p.current_stock);
                       const unitDisplay = formatUnit(p.unit);
 
@@ -260,15 +246,19 @@ export function ShoppingListView({
                             <div className="flex flex-col text-right">
                               <span className={`text-[1.05rem] font-medium ${isChecked ? "line-through text-muted-foreground" : "text-foreground"}`}>{p.product_name}</span>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <span className={`text-sm ${isChecked ? "text-muted-foreground" : "text-primary font-bold"}`}>
-                                  {qty} {unitDisplay}
-                                </span>
+                                <span className={`text-sm ${isChecked ? "text-muted-foreground" : "text-primary font-bold"}`}>{qty} {unitDisplay}</span>
                                 {lactoseFree && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">ללא לקטוז</span>}
                                 {p.is_one_time && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">מוצר חד-פעמי</span>}
                               </div>
                             </div>
                           </div>
-                          {p.is_one_time && <button onClick={(e) => { e.stopPropagation(); onDeleteProduct(p.id); }} className="text-muted-foreground/40 p-2"><Trash2 className="h-4 w-4" /></button>}
+                          {/* כפתור מחיקה לכל המוצרים (גם רגילים וגם חד-פעמיים) */}
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }} 
+                            className="text-muted-foreground/40 p-2 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       );
                     })}
@@ -279,6 +269,29 @@ export function ShoppingListView({
           })}
         </div>
       </div>
+
+      {/* הדיאלוג החכם למחיקה מרשימת הקניות */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="rounded-3xl p-6 font-sans">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-right">
+              {deleteTarget?.is_one_time ? 'למחוק את המוצר?' : 'להסיר מרשימת הקניות?'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-right mt-2 font-medium">
+              {deleteTarget?.is_one_time 
+                ? 'המוצר החד-פעמי יימחק לחלוטין מהמערכת.' 
+                : 'המוצר יוסר מרשימת הקניות והמערכת תעדכן כאילו המלאי שלו מלא לחלוטין. הוא עדיין יישאר במערכת המלאי (Pantry).'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
+            <AlertDialogAction className="rounded-xl px-6 py-5 bg-red-500 hover:bg-red-600 text-white font-bold" onClick={confirmDelete}>
+              {deleteTarget?.is_one_time ? 'מחק מוצר' : 'מלא מלאי והסר'}
+            </AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl px-6 py-5 font-medium">ביטול</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   );
 }
