@@ -1,7 +1,7 @@
 import { 
   Copy, CheckCircle2, ChevronDown, Trash2, Check, Search, X,
-  Beef, Carrot, Milk, Snowflake, Sparkles, 
-  Wheat, CupSoda, Baby, ShoppingBag, Apple, Fish
+  Beef, Carrot, Milk, Snowflake, Sparkles, Wheat, CupSoda, Baby, ShoppingBag, 
+  Apple, Fish, Package, Citrus, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,64 +25,67 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+// מילון הגדרות קבוע למחלקות - חייב להיות זהה לזה שבמזווה
+const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> = {
+  "ירקות": { icon: Carrot, color: "text-green-500", border: "border-r-green-500" },
+  "פירות": { icon: Apple, color: "text-pink-500", border: "border-r-pink-500" },
+  "מוצרי חלב ומקרר": { icon: Milk, color: "text-blue-500", border: "border-r-blue-500" },
+  "קצביה": { icon: Beef, color: "text-red-500", border: "border-r-red-500" },
+  "בשר ועוף": { icon: Beef, color: "text-red-500", border: "border-r-red-500" },
+  "דגים": { icon: Fish, color: "text-cyan-500", border: "border-r-cyan-500" },
+  "קפואים": { icon: Snowflake, color: "text-sky-500", border: "border-r-sky-500" },
+  "מזווה ושימורים": { icon: Package, color: "text-orange-500", border: "border-r-orange-500" },
+  "תבלינים ואפייה": { icon: UtensilsCrossed, color: "text-amber-500", border: "border-r-amber-500" },
+  "מאפייה ולחם": { icon: Wheat, color: "text-yellow-500", border: "border-r-yellow-500" },
+  "חטיפים ומתוקים": { icon: Candy, color: "text-purple-500", border: "border-r-purple-500" },
+  "משקאות": { icon: CupSoda, color: "text-indigo-500", border: "border-r-indigo-500" },
+  "פארם וטואלטיקה": { icon: Sparkles, color: "text-fuchsia-500", border: "border-r-fuchsia-500" },
+  "חומרי ניקוי": { icon: Droplets, color: "text-slate-500", border: "border-r-slate-500" },
+  "חד-פעמי": { icon: UtensilsCrossed, color: "text-rose-500", border: "border-r-rose-500" },
+  "תינוקות": { icon: Baby, color: "text-teal-500", border: "border-r-teal-500" },
+  "פיצוחים ופירות יבשים": { icon: Citrus, color: "text-stone-500", border: "border-r-stone-500" },
+  "מעדניה": { icon: ChefHat, color: "text-violet-500", border: "border-r-violet-500" },
+  "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
+};
+
+// פונקציית עזר ליחידות מידה
+const formatUnit = (unit?: string) => {
+  if (!unit || unit.trim() === "") return "יחידות";
+  const u = unit.toLowerCase();
+  if (u.includes("קילו") || u === 'ק"ג') return 'ק"ג';
+  if (u.includes("יחיד")) return "יחידות";
+  if (u.includes("חביל")) return "חבילות";
+  if (u.includes("מארז")) return "מארזים";
+  if (u.includes("ליטר")) return "ליטרים";
+  if (u.includes("בקבוק")) return "בקבוקים";
+  if (u.includes("פחי")) return "פחיות";
+  if (u.includes("גליל")) return "גלילים";
+  if (u.includes("שפופר")) return "שפופרות";
+  if (u.includes("טבלי")) return "טבליות";
+  if (u.includes("קפסול")) return "קפסולות";
+  if (u.includes("גרם") && !u.includes("קילו")) return "גרם";
+  return unit;
+};
+
 interface ShoppingListViewProps {
   shoppingByDepartment: Record<string, Product[]>;
   shoppingList: Product[];
+  departmentOrder: string[];
   onCopyList: () => void;
   onFinishChecked: (checkedIds: Set<string>) => void;
   onDeleteProduct: (id: string) => void;
-  onUpdateStock: (id: string, stock: number) => void;
+  onUpdateProduct: (updates: { id: string; current_stock?: number }) => void;
   isFinishing: boolean;
 }
-
-const COLORS = [
-  { borderClass: 'border-r-red-500', iconClass: 'text-red-500' },
-  { borderClass: 'border-r-green-500', iconClass: 'text-green-500' },
-  { borderClass: 'border-r-blue-500', iconClass: 'text-blue-500' },
-  { borderClass: 'border-r-orange-500', iconClass: 'text-orange-500' },
-  { borderClass: 'border-r-purple-500', iconClass: 'text-purple-500' },
-  { borderClass: 'border-r-cyan-500', iconClass: 'text-cyan-500' },
-  { borderClass: 'border-r-pink-500', iconClass: 'text-pink-500' },
-  { borderClass: 'border-r-amber-500', iconClass: 'text-amber-500' },
-  { borderClass: 'border-r-indigo-500', iconClass: 'text-indigo-500' },
-  { borderClass: 'border-r-teal-500', iconClass: 'text-teal-500' },
-];
-
-const getDeptIcon = (name: string) => {
-  const lower = name.toLowerCase();
-  if (lower.includes('ירק')) return Carrot;
-  if (lower.includes('פיר')) return Apple;
-  if (lower.includes('חלב') || lower.includes('גבינ') || lower.includes('מקרר')) return Milk;
-  if (lower.includes('בשר') || lower.includes('עוף') || lower.includes('קצביה')) return Beef;
-  if (lower.includes('דג')) return Fish;
-  if (lower.includes('קפוא')) return Snowflake;
-  if (lower.includes('פארם') || lower.includes('נקיון') || lower.includes('סבון')) return Sparkles;
-  if (lower.includes('מאפי') || lower.includes('לחם')) return Wheat;
-  if (lower.includes('שתי') || lower.includes('משק')) return CupSoda;
-  if (lower.includes('תינוק')) return Baby;
-  return ShoppingBag;
-};
-
-const formatUnit = (unit?: string) => {
-  if (!unit) return "יחידות";
-  const lowerUnit = unit.toLowerCase();
-  if (lowerUnit.includes("קילו")) return "ק\"ג";
-  if (lowerUnit.includes("יחיד")) return "יחידות";
-  if (lowerUnit.includes("חביל")) return "חבילות";
-  if (lowerUnit.includes("מארז")) return "מארזים";
-  if (lowerUnit.includes("בקבוק")) return "בקבוקים";
-  if (lowerUnit.includes("פחי")) return "פחיות";
-  if (lowerUnit.includes("ליטר")) return "ליטרים";
-  return unit;
-};
 
 export function ShoppingListView({
   shoppingByDepartment,
   shoppingList,
+  departmentOrder,
   onCopyList,
   onFinishChecked,
   onDeleteProduct,
-  onUpdateStock,
+  onUpdateProduct,
   isFinishing,
 }: ShoppingListViewProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -90,71 +93,41 @@ export function ShoppingListView({
     Object.keys(shoppingByDepartment).reduce((acc, d) => ({ ...acc, [d]: true }), {})
   );
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
-
-  const toggleChecked = (id: string) => {
-    setChecked((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
-
-  const deptKeys = useMemo(() => Object.keys(shoppingByDepartment).sort(), [shoppingByDepartment]);
-  
-  const deptColors = useMemo(() => {
-    const mapping: Record<string, typeof COLORS[0]> = {};
-    const usedIndices = new Set<number>();
-    const preferences = [{ keys: ['ירק'], idx: 1 }, { keys: ['פיר'], idx: 6 }, { keys: ['חלב', 'גבינ', 'מקרר'], idx: 2 }, { keys: ['בשר', 'עוף', 'קצביה'], idx: 0 }, { keys: ['דג'], idx: 5 }, { keys: ['פארם'], idx: 4 }];
-    deptKeys.forEach((dept) => {
-      const lower = dept.toLowerCase();
-      for (const pref of preferences) {
-        if (pref.keys.some(k => lower.includes(k)) && !usedIndices.has(pref.idx)) {
-          mapping[dept] = COLORS[pref.idx];
-          usedIndices.add(pref.idx);
-          break;
-        }
-      }
-    });
-    deptKeys.forEach((dept) => {
-      if (!mapping[dept]) {
-        const availableIndex = COLORS.findIndex((_, i) => !usedIndices.has(i));
-        mapping[dept] = availableIndex !== -1 ? COLORS[availableIndex] : COLORS[0];
-        if (availableIndex !== -1) usedIndices.add(availableIndex);
-      }
-    });
-    return mapping;
-  }, [deptKeys]);
 
   const isSearching = searchQuery.length > 0;
   const lowerQuery = searchQuery.toLowerCase();
-  const filteredDepts = useMemo(() => {
-    if (!searchQuery) return deptKeys;
-    return deptKeys.filter(dept => {
-      const matchesDeptName = dept.toLowerCase().includes(lowerQuery);
-      const items = shoppingByDepartment[dept] || [];
-      return matchesDeptName || items.some(p => p.product_name?.toLowerCase().includes(lowerQuery));
-    });
-  }, [deptKeys, shoppingByDepartment, searchQuery, lowerQuery]);
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
-    
     if (deleteTarget.is_one_time) {
       onDeleteProduct(deleteTarget.id);
     } else {
-      onUpdateStock(deleteTarget.id, deleteTarget.base_quantity);
+      // עדכון מלאי ל-100% כדי שיחזור למזווה וייצא מהרשימה
+      onUpdateProduct({ id: deleteTarget.id, current_stock: deleteTarget.base_quantity });
     }
-    
     setDeleteTarget(null);
   };
+
+  const filteredDepts = useMemo(() => {
+    const keys = Object.keys(shoppingByDepartment);
+    keys.sort((a, b) => {
+      const idxA = departmentOrder.indexOf(a);
+      const idxB = departmentOrder.indexOf(b);
+      return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+    });
+    if (!searchQuery) return keys;
+    return keys.filter(dept => {
+      const matchesDept = dept.toLowerCase().includes(lowerQuery);
+      const items = shoppingByDepartment[dept] || [];
+      return matchesDept || items.some(p => p.product_name?.toLowerCase().includes(lowerQuery));
+    });
+  }, [shoppingByDepartment, searchQuery, lowerQuery, departmentOrder]);
 
   if (shoppingList.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 bg-slate-50 min-h-screen">
-        <div className="bg-white p-8 rounded-3xl border border-dashed shadow-sm flex flex-col items-center">
+        <div className="bg-white p-8 rounded-3xl border border-dashed shadow-sm flex flex-col items-center font-sans">
           <CheckCircle2 className="h-12 w-12 text-primary/30 mb-4" />
           <p className="text-xl font-bold">הכל במלאי! 🎉</p>
         </div>
@@ -164,11 +137,17 @@ export function ShoppingListView({
 
   return (
     <div className="space-y-6 pb-24 bg-slate-50 min-h-screen pt-4 px-2 font-sans">
+      
       <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'}`}>
         <div className="space-y-4">
           <div className="relative w-full">
             <div className="absolute inset-y-0 right-0 flex items-center pr-4"><Search className="h-5 w-5 text-slate-400" /></div>
-            <Input placeholder="חיפוש פריט או מחלקה..." className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <Input
+              placeholder="חיפוש פריט או מחלקה..."
+              className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
             {isSearching && <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><X className="h-5 w-5" /></button>}
           </div>
 
@@ -206,62 +185,61 @@ export function ShoppingListView({
         </div>
       </div>
 
-      <div>
-        {!isSearching && <div className="flex items-center justify-between px-3 mb-4"><h2 className="text-xl font-extrabold text-slate-800">מה לקנות?</h2></div>}
-        <div className="space-y-4">
-          {filteredDepts.map((dept) => {
-            const items = shoppingByDepartment[dept];
-            const displayItems = isSearching ? (dept.toLowerCase().includes(lowerQuery) ? items : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))) : items;
-            const Icon = getDeptIcon(dept);
-            const { borderClass, iconClass } = deptColors[dept] || COLORS[0];
+      <div className="space-y-4">
+        {filteredDepts.map((deptName) => {
+          const items = shoppingByDepartment[deptName];
+          const displayItems = isSearching ? (deptName.toLowerCase().includes(lowerQuery) ? items : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))) : items;
+          
+          // שליפת עיצוב מהמילון הקבוע
+          const config = DEPT_CONFIG[deptName] || { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-200" };
+          const Icon = config.icon;
 
-            return (
-              <Collapsible key={dept} open={isSearching ? true : (openDepts[dept] !== false)} onOpenChange={(open) => setOpenDepts(prev => ({ ...prev, [dept]: open }))} className={`bg-white rounded-2xl shadow-sm border border-border overflow-hidden border-r-4 ${borderClass}`}>
-                <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-4 font-bold text-foreground">
-                  <div className="flex items-center gap-3">
-                    <Icon className={`h-5 w-5 ${iconClass}`} />
-                    <span>{dept}</span>
-                    <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{displayItems.length}</span>
-                  </div>
-                  <ChevronDown className={`h-5 w-5 text-slate-300 transition-transform ${openDepts[dept] !== false || isSearching ? "rotate-180" : ""}`} />
-                </CollapsibleTrigger>
-                <CollapsibleContent className="px-3 pb-3 space-y-2 mt-1">
-                  <div className="space-y-2 border-t border-border/50 pt-3">
-                    {displayItems.map((p) => {
-                      const isChecked = checked.has(p.id);
-                      const lactoseFree = isLactoseFree(p.product_name);
-                      const qty = p.is_one_time ? 1 : Math.max(0, p.base_quantity - p.current_stock);
-                      const unitDisplay = formatUnit(p.unit);
+          return (
+            <Collapsible key={deptName} open={isSearching ? true : (openDepts[deptName] !== false)} onOpenChange={(open) => setOpenDepts(prev => ({ ...prev, [deptName]: open }))} className={`bg-white rounded-2xl shadow-sm border border-border overflow-hidden border-r-8 ${config.border}`}>
+              <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-5 font-bold text-foreground outline-none">
+                <div className="flex items-center gap-3">
+                  <div className={`p-2 rounded-lg bg-slate-50`}><Icon className={`h-5 w-5 ${config.color}`} /></div>
+                  <span className="text-lg">{deptName}</span>
+                  <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{displayItems.length}</span>
+                </div>
+                <ChevronDown className={`h-5 w-5 text-slate-300 transition-transform ${openDepts[deptName] !== false || isSearching ? "rotate-180" : ""}`} />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="px-3 pb-3 space-y-2">
+                <div className="space-y-2 border-t border-border/50 pt-3">
+                  {displayItems.map((p) => {
+                    const isChecked = checked.has(p.id);
+                    const lactoseFree = isLactoseFree(p.product_name);
+                    const unitLabel = formatUnit(p.unit);
+                    const qty = p.is_one_time ? 1 : Math.max(0, p.base_quantity - p.current_stock);
 
-                      return (
-                        <div key={p.id} onClick={() => toggleChecked(p.id)} className={`group flex items-center justify-between rounded-xl px-4 py-3.5 border cursor-pointer transition-all ${isChecked ? "bg-muted/40 opacity-50" : lactoseFree ? "bg-sky-50/40 border-sky-100" : "bg-white border-gray-100"}`}>
-                          <div className="flex items-center gap-4">
-                            <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${isChecked ? "bg-primary border-primary text-white" : "bg-white border-muted-foreground/30"}`}>{isChecked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}</div>
-                            <div className="flex flex-col text-right">
-                              <span className={`text-[1.05rem] font-medium ${isChecked ? "line-through text-muted-foreground" : "text-foreground"}`}>{p.product_name}</span>
-                              <div className="flex items-center gap-2 mt-0.5">
-                                <span className={`text-sm ${isChecked ? "text-muted-foreground" : "text-primary font-bold"}`}>{qty} {unitDisplay}</span>
-                                {lactoseFree && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">ללא לקטוז</span>}
-                                {p.is_one_time && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">מוצר חד-פעמי</span>}
-                              </div>
+                    return (
+                      <div key={p.id} className={`flex items-center justify-between rounded-xl px-4 py-3.5 border transition-all ${isChecked ? "bg-muted/40 opacity-50" : "bg-white border-gray-100"}`}>
+                        <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => {
+                          const next = new Set(checked);
+                          if (next.has(p.id)) next.delete(p.id); else next.add(p.id);
+                          setChecked(next);
+                        }}>
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${isChecked ? "bg-primary border-primary text-white" : "bg-white border-muted-foreground/30"}`}>{isChecked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}</div>
+                          <div className="flex flex-col text-right">
+                            <span className={`text-[1.05rem] font-medium ${isChecked ? "line-through text-muted-foreground" : ""}`}>{p.product_name}</span>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-xs text-primary font-bold">{qty} {unitLabel}</span>
+                              {lactoseFree && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">ללא לקטוז</span>}
+                              {p.is_one_time && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">מוצר חד-פעמי</span>}
                             </div>
                           </div>
-                          
-                          <button 
-                            onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }} 
-                            className="text-muted-foreground/40 p-2 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
                         </div>
-                      );
-                    })}
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
-            );
-          })}
-        </div>
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(p); }} className="text-muted-foreground/40 p-2 hover:text-red-500 rounded-lg">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+          );
+        })}
       </div>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
