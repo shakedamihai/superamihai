@@ -59,7 +59,6 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
-// קומפוננטת מחלקה עם תמיכה בכיבוי גרירה (למניעת התנגשויות)
 function SortableDepartmentItem({ dept, disabled, children }: { dept: Department; disabled?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
     id: `dept-${dept.id}`,
@@ -74,7 +73,8 @@ function SortableDepartmentItem({ dept, disabled, children }: { dept: Department
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="w-full flex justify-center mb-4">
+    // הוספנו ID ייחודי כדי שנוכל לגלול אליו!
+    <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center mb-4">
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
         <button
           {...attributes}
@@ -103,7 +103,6 @@ export function PantryCheckView({
   onAddDepartment,
 }: PantryCheckViewProps) {
   
-  // חישוב המידע מהשרת
   const baseRecurringByDept = useMemo(() => {
     return Object.entries(productsByDepartment || {}).reduce((acc, [dept, items]) => {
       const recurring = (items || []).filter((p) => !p.is_one_time);
@@ -118,15 +117,12 @@ export function PantryCheckView({
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [departments, baseRecurringByDept]);
 
-  // סטייט מקומי לעדכון מיידי
   const [localDepts, setLocalDepts] = useState<Department[]>(baseSortedDepts);
   const [localRecurring, setLocalRecurring] = useState<Record<string, Product[]>>(baseRecurringByDept);
 
-  // מנגנון הנעילה האופטימית - מונע מהשרת לדרוס אותנו ב-2 השניות שאחרי הגרירה
   const [isReordering, setIsReordering] = useState(false);
   const reorderTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // מתעדכן מהשרת *רק* אם אנחנו לא באמצע סידור מחדש
   useEffect(() => { 
     if (!isReordering) setLocalDepts(baseSortedDepts); 
   }, [baseSortedDepts, isReordering]);
@@ -158,14 +154,13 @@ export function PantryCheckView({
     const activeStr = String(active.id);
     const overStr = String(over.id);
 
-    // הפעלת הנעילה! לא נקשיב לשרת במשך 2 שניות עד שהוא יתעדכן לגמרי
     setIsReordering(true);
     if (reorderTimeout.current) clearTimeout(reorderTimeout.current);
     reorderTimeout.current = setTimeout(() => {
       setIsReordering(false);
     }, 2000);
 
-    // 1. מחלקה הוזזה
+    // 1. הזזת מחלקה
     if (activeStr.startsWith("dept-") && overStr.startsWith("dept-")) {
       const activeDeptId = activeStr.replace("dept-", "");
       const overDeptId = overStr.replace("dept-", "");
@@ -175,15 +170,25 @@ export function PantryCheckView({
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const reordered = arrayMove(localDepts, oldIndex, newIndex);
-        setLocalDepts(reordered); // זז מיד
+        setLocalDepts(reordered);
+        
         try {
           onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
         } catch(e) { console.error("Reorder Dept Error", e); }
+
+        // קסם הגלילה החלקה! (Auto-Scroll)
+        // מחכים רגע שהמחלקות יפתחו חזרה, ואז גולשים למחלקה שהזזנו
+        setTimeout(() => {
+          const element = document.getElementById(`dept-wrapper-${activeDeptId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 150);
       }
       return;
     }
 
-    // 2. מוצר הוזז
+    // 2. הזזת מוצר
     let foundDeptName: string | null = null;
     for (const [deptName, items] of Object.entries(localRecurring)) {
       if (items.some((p) => p.id === activeStr)) {
@@ -202,7 +207,7 @@ export function PantryCheckView({
         setLocalRecurring((prev) => ({
           ...prev,
           [foundDeptName as string]: reordered,
-        })); // זז מיד
+        }));
         try {
           onReorderProducts(reordered.map((p, i) => ({ id: p.id, sort_order: i })));
         } catch (e) { console.error("Reorder Product Error", e); }
