@@ -1,7 +1,7 @@
 import { 
   ChevronDown, Pencil, GripVertical, Search, 
   Beef, Carrot, Milk, Snowflake, Sparkles, 
-  Croissant, CupSoda, Cookie, Package, Baby, ShoppingBasket 
+  Wheat, CupSoda, Baby, ShoppingBag, Apple, Fish 
 } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { Department } from "@/hooks/useDepartments";
@@ -63,53 +63,49 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
-// --- מערכת העיצוב החדשה (Clean UI & Semantic Colors) ---
+// מאגר של 20 צבעים ייחודיים שונים לחלוטין
+const COLORS = [
+  { borderClass: 'border-r-red-500', iconClass: 'text-red-500' },
+  { borderClass: 'border-r-green-500', iconClass: 'text-green-500' },
+  { borderClass: 'border-r-blue-500', iconClass: 'text-blue-500' },
+  { borderClass: 'border-r-orange-500', iconClass: 'text-orange-500' },
+  { borderClass: 'border-r-purple-500', iconClass: 'text-purple-500' },
+  { borderClass: 'border-r-cyan-500', iconClass: 'text-cyan-500' },
+  { borderClass: 'border-r-pink-500', iconClass: 'text-pink-500' },
+  { borderClass: 'border-r-amber-500', iconClass: 'text-amber-500' },
+  { borderClass: 'border-r-indigo-500', iconClass: 'text-indigo-500' },
+  { borderClass: 'border-r-teal-500', iconClass: 'text-teal-500' },
+  { borderClass: 'border-r-fuchsia-500', iconClass: 'text-fuchsia-500' },
+  { borderClass: 'border-r-lime-500', iconClass: 'text-lime-500' },
+  { borderClass: 'border-r-sky-500', iconClass: 'text-sky-500' },
+  { borderClass: 'border-r-rose-500', iconClass: 'text-rose-500' },
+  { borderClass: 'border-r-emerald-500', iconClass: 'text-emerald-500' },
+  { borderClass: 'border-r-violet-500', iconClass: 'text-violet-500' },
+  { borderClass: 'border-r-yellow-500', iconClass: 'text-yellow-500' },
+  { borderClass: 'border-r-stone-500', iconClass: 'text-stone-500' },
+  { borderClass: 'border-r-slate-500', iconClass: 'text-slate-500' },
+  { borderClass: 'border-r-zinc-500', iconClass: 'text-zinc-500' },
+];
 
-const getDeptStyling = (name: string) => {
+// פונקציה חכמה לאייקונים (רק בסיס, כל השאר מקבלים שקית קניות)
+const getDeptIcon = (name: string) => {
   const lower = name.toLowerCase();
   
-  // מיפוי חכם: מחפש מילות מפתח ומתאים אייקון מודרני (Lucide) וצבע מתאים
-  if (lower.includes('ירק') || lower.includes('פיר')) 
-    return { Icon: Carrot, borderClass: 'border-r-green-500', iconClass: 'text-green-500' };
+  if (lower.includes('ירק')) return Carrot;
+  if (lower.includes('פיר')) return Apple;
+  if (lower.includes('חלב') || lower.includes('גבינ') || lower.includes('מקרר')) return Milk;
+  // איחוד קצביה - בשר, עוף (דגים נפרד)
+  if (lower.includes('בשר') || lower.includes('עוף') || lower.includes('קצביה')) return Beef;
+  if (lower.includes('דג')) return Fish;
+  if (lower.includes('קפוא')) return Snowflake;
+  if (lower.includes('פארם') || lower.includes('נקיון') || lower.includes('סבון')) return Sparkles;
+  if (lower.includes('מאפי') || lower.includes('לחם')) return Wheat;
+  if (lower.includes('שתי') || lower.includes('משק')) return CupSoda;
+  if (lower.includes('תינוק')) return Baby;
   
-  if (lower.includes('חלב') || lower.includes('מקרר') || lower.includes('גבינ')) 
-    return { Icon: Milk, borderClass: 'border-r-blue-500', iconClass: 'text-blue-500' };
-  
-  if (lower.includes('בשר') || lower.includes('עוף') || lower.includes('דג')) 
-    return { Icon: Beef, borderClass: 'border-r-red-500', iconClass: 'text-red-500' };
-  
-  if (lower.includes('קפוא')) 
-    return { Icon: Snowflake, borderClass: 'border-r-cyan-400', iconClass: 'text-cyan-500' };
-  
-  if (lower.includes('פארם') || lower.includes('נקיון') || lower.includes('טיפוח') || lower.includes('סבון')) 
-    return { Icon: Sparkles, borderClass: 'border-r-purple-500', iconClass: 'text-purple-500' };
-  
-  if (lower.includes('מאפי') || lower.includes('לחם')) 
-    return { Icon: Croissant, borderClass: 'border-r-amber-500', iconClass: 'text-amber-500' };
-  
-  if (lower.includes('שתי') || lower.includes('משק')) 
-    return { Icon: CupSoda, borderClass: 'border-r-sky-400', iconClass: 'text-sky-500' };
-  
-  if (lower.includes('מתוק') || lower.includes('חטיף') || lower.includes('שוקולד')) 
-    return { Icon: Cookie, borderClass: 'border-r-pink-500', iconClass: 'text-pink-500' };
-  
-  if (lower.includes('תינוק')) 
-    return { Icon: Baby, borderClass: 'border-r-rose-400', iconClass: 'text-rose-400' };
-  
-  if (lower.includes('מזווה') || lower.includes('יבש') || lower.includes('שימור')) 
-    return { Icon: Package, borderClass: 'border-r-orange-500', iconClass: 'text-orange-500' };
-
-  // מנגנון גיבוי נקי ואלגנטי למחלקות לא מוכרות
-  const fallbackStyles = [
-    { borderClass: 'border-r-slate-400', iconClass: 'text-slate-500' },
-    { borderClass: 'border-r-indigo-400', iconClass: 'text-indigo-500' },
-    { borderClass: 'border-r-teal-400', iconClass: 'text-teal-500' },
-  ];
-  const hash = name.length % fallbackStyles.length;
-  return { Icon: ShoppingBasket, ...fallbackStyles[hash] };
+  // אייקון ברירת מחדל אלגנטי לכל מחלקה אחרת
+  return ShoppingBag;
 };
-
-// --------------------------------------------------------
 
 function SortableDepartmentItem({ dept, disabled, children }: { dept: Department; disabled?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
@@ -170,6 +166,58 @@ export function PantryCheckView({
       .filter((d) => baseRecurringByDept[d.name])
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [departments, baseRecurringByDept]);
+
+  // מנוע נעילת צבעים ייחודיים ויציבים
+  const deptColors = useMemo(() => {
+    const mapping: Record<string, typeof COLORS[0]> = {};
+    const usedIndices = new Set<number>();
+
+    // הגדרת משפחות וצבעים מועדפים למחלקות בסיס בלבד
+    const preferences = [
+      { keys: ['ירק'], idx: 1 }, // ירוק
+      { keys: ['פיר'], idx: 14 }, // אמרלד (שונה מירוק של ירקות)
+      { keys: ['חלב', 'גבינ', 'מקרר'], idx: 2 }, // כחול
+      { keys: ['בשר', 'עוף', 'קצביה'], idx: 0 }, // אדום
+      { keys: ['דג'], idx: 5 }, // ציאן (שונה מאדום)
+      { keys: ['קפוא'], idx: 12 }, // תכלת
+      { keys: ['פארם', 'נקיון', 'סבון'], idx: 4 }, // סגול
+      { keys: ['מאפי', 'לחם'], idx: 7 }, // ענבר
+      { keys: ['שתי', 'משק'], idx: 8 }, // אינדיגו
+      { keys: ['תינוק'], idx: 10 }, // פוקסיה
+    ];
+
+    // מסדרים את המחלקות לפי ה-ID שלהן כדי שהצבעים לא יתחלפו אם משנים את הסדר
+    const stableDepts = [...(departments || [])].sort((a, b) => a.id.localeCompare(b.id));
+
+    // סיבוב 1: מחלקים את הצבעים המועדפים לבסיס (בתנאי שהם פנויים)
+    stableDepts.forEach((dept) => {
+      const lower = dept.name.toLowerCase();
+      for (const pref of preferences) {
+        if (pref.keys.some(k => lower.includes(k)) && !usedIndices.has(pref.idx)) {
+          mapping[dept.name] = COLORS[pref.idx];
+          usedIndices.add(pref.idx);
+          break;
+        }
+      }
+    });
+
+    // סיבוב 2: מחלקים את שאר הצבעים הפנויים לכל המחלקות המומצאות/החדשות
+    stableDepts.forEach((dept) => {
+      if (!mapping[dept.name]) {
+        // מוצא את הצבע הראשון שעוד לא נתפס
+        const availableIndex = COLORS.findIndex((_, i) => !usedIndices.has(i));
+        if (availableIndex !== -1) {
+          mapping[dept.name] = COLORS[availableIndex];
+          usedIndices.add(availableIndex);
+        } else {
+          // גיבוי נדיר למקרה שיש יותר מ-20 מחלקות שונות
+          mapping[dept.name] = COLORS[Math.abs(dept.name.length) % COLORS.length];
+        }
+      }
+    });
+
+    return mapping;
+  }, [departments]);
 
   const [localDepts, setLocalDepts] = useState<Department[]>(baseSortedDepts);
   const [localRecurring, setLocalRecurring] = useState<Record<string, Product[]>>(baseRecurringByDept);
@@ -307,7 +355,7 @@ export function PantryCheckView({
           <div className="space-y-4">
             {localDepts.length === 0 ? (
               <div className="text-center py-16 bg-white rounded-3xl border border-dashed shadow-sm">
-                <Package className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+                <ShoppingBag className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
                 <p className="text-muted-foreground font-medium">אין מוצרים במזווה עדיין</p>
               </div>
             ) : displayDepts.length === 0 && searchQuery ? (
@@ -331,8 +379,8 @@ export function PantryCheckView({
                         : deptItems.filter(p => p.product_name?.toLowerCase().includes(lowerQuery)))
                     : deptItems;
 
-                  // משיגים את העיצוב (אייקון, צבע גבול, וצבע אייקון)
-                  const { Icon, borderClass, iconClass } = getDeptStyling(dept.name);
+                  const Icon = getDeptIcon(dept.name);
+                  const { borderClass, iconClass } = deptColors[dept.name] || COLORS[0];
 
                   return (
                     <SortableDepartmentItem key={dept.id} dept={dept} disabled={disableDeptDrag}>
@@ -341,7 +389,6 @@ export function PantryCheckView({
                         onOpenChange={(open) =>
                           setOpenDepts({ ...openDepts, [dept.name]: open })
                         }
-                        // רקע לבן נקי, פס צבע עבה בצד ימין בלבד
                         className={`bg-white rounded-2xl shadow-sm border border-border overflow-hidden border-r-4 ${borderClass}`}
                       >
                         <div className="flex items-center gap-1 p-1">
@@ -349,7 +396,6 @@ export function PantryCheckView({
                             className="flex-1 flex items-center justify-between px-4 py-3 bg-transparent font-bold transition-colors"
                           >
                             <div className="flex items-center gap-3">
-                              {/* אייקון וקטורי בצבע המחלקה */}
                               <Icon className={`h-5 w-5 ${iconClass}`} />
                               <span className="text-[1.05rem] tracking-tight text-foreground">{dept.name}</span>
                               <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-black">
@@ -396,7 +442,6 @@ export function PantryCheckView({
         </DndContext>
       </div>
 
-      {/* --- Dialogs --- */}
       <EditProductDialog
         product={editProduct}
         open={!!editProduct}
