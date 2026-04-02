@@ -94,7 +94,6 @@ const getDeptIcon = (name: string) => {
   return ShoppingBag;
 };
 
-// קומפוננטת הפריט הנגרר עם שיפור ב-Transition
 function SortableDepartmentItem({ dept, disabled, children }: { dept: Department; disabled?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
     id: `dept-${dept.id}`,
@@ -111,7 +110,7 @@ function SortableDepartmentItem({ dept, disabled, children }: { dept: Department
 
   return (
     <div 
-      id={`dept-wrapper-${dept.id}`} // ה-ID שמשמש ל-Scroll
+      id={`dept-wrapper-${dept.id}`}
       ref={setNodeRef} 
       style={style} 
       className="w-full flex justify-center mb-4 touch-none"
@@ -223,12 +222,11 @@ export function PantryCheckView({
 
     setIsReordering(true);
     if (reorderTimeout.current) clearTimeout(reorderTimeout.current);
-    reorderTimeout.current = setTimeout(() => setIsReordering(false), 800); // דיליי קצר יותר
+    reorderTimeout.current = setTimeout(() => setIsReordering(false), 800);
 
     const activeStr = String(active.id);
     const overStr = String(over.id);
 
-    // גרירת מחלקה
     if (activeStr.startsWith("dept-") && overStr.startsWith("dept-")) {
       const activeDeptId = activeStr.replace("dept-", "");
       const overDeptId = overStr.replace("dept-", "");
@@ -240,7 +238,6 @@ export function PantryCheckView({
         setLocalDepts(reordered);
         onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
         
-        // Scroll מיידי למיקום החדש
         requestAnimationFrame(() => {
           const element = document.getElementById(`dept-wrapper-${activeDeptId}`);
           if (element) {
@@ -251,7 +248,6 @@ export function PantryCheckView({
       return;
     }
 
-    // גרירת מוצר בתוך מחלקה
     let foundDeptName: string | null = null;
     for (const [name, items] of Object.entries(localRecurring)) {
       if (items.some((p) => p.id === activeStr)) { foundDeptName = name; break; }
@@ -269,6 +265,22 @@ export function PantryCheckView({
     }
   };
 
+  // --- הפונקציות החסרות שהוחזרו ---
+  const handleUpdateUnit = (oldUnit: string, newUnit: string) => {
+    if (SYSTEM_UNITS.includes(oldUnit)) return;
+    Object.values(productsByDepartment).flat().filter(p => p.unit === oldUnit).forEach(p => {
+      onUpdateProduct({ id: p.id, unit: newUnit });
+    });
+  };
+
+  const handleDeleteUnit = (unitToDelete: string) => {
+    if (SYSTEM_UNITS.includes(unitToDelete)) return;
+    Object.values(productsByDepartment).flat().filter(p => p.unit === unitToDelete).forEach(p => {
+      onUpdateProduct({ id: p.id, unit: "יחידות" });
+    });
+  };
+  // --------------------------------
+
   const lowerQuery = searchQuery.toLowerCase();
   const displayDepts = useMemo(() => {
     if (!searchQuery) return localDepts;
@@ -283,7 +295,6 @@ export function PantryCheckView({
     <div className="w-full flex flex-col items-center py-4 min-h-screen bg-slate-50/50 font-sans">
       <div className="w-full max-w-[calc(100vw-32px)] space-y-6">
         
-        {/* דאשבורד חיפוש וניהול יחידות */}
         <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'}`}>
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -307,10 +318,9 @@ export function PantryCheckView({
           </div>
         </div>
 
-        {/* רשימת המלאי עם גרירה חלקה */}
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <SortableContext items={displayDepts.map(d => `dept-${d.id}`)} strategy={verticalListSortingStrategy}>
-            <div className="flex flex-col gap-4"> {/* הוספת gap בין המחלקות */}
+            <div className="flex flex-col gap-4">
               {displayDepts.map((dept) => {
                 const Icon = getDeptIcon(dept.name);
                 const { borderClass, iconClass } = deptColors[dept.name] || COLORS[0];
@@ -358,7 +368,6 @@ export function PantryCheckView({
         </DndContext>
       </div>
 
-      {/* דיאלוגים (נשארים אותו דבר) */}
       <Dialog open={manageUnitsOpen} onOpenChange={setManageUnitsOpen}>
         <DialogContent className="max-w-[95vw] sm:max-w-[400px] rounded-[2rem] p-6 font-sans">
           <DialogHeader><DialogTitle className="text-right text-xl font-black text-slate-900">ניהול יחידות מידה</DialogTitle></DialogHeader>
