@@ -238,12 +238,13 @@ export function PantryCheckView({
         setLocalDepts(reordered);
         onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
         
-        requestAnimationFrame(() => {
+        // תיקון הגלילה (Scroll) - נותן לדפדפן זמן קצרצר לעדכן את הממשק ואז קופץ בדיוק לתחילת המחלקה
+        setTimeout(() => {
           const element = document.getElementById(`dept-wrapper-${activeDeptId}`);
           if (element) {
-            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            element.scrollIntoView({ behavior: 'smooth', block: 'start' });
           }
-        });
+        }, 100);
       }
       return;
     }
@@ -265,7 +266,6 @@ export function PantryCheckView({
     }
   };
 
-  // --- הפונקציות החסרות שהוחזרו ---
   const handleUpdateUnit = (oldUnit: string, newUnit: string) => {
     if (SYSTEM_UNITS.includes(oldUnit)) return;
     Object.values(productsByDepartment).flat().filter(p => p.unit === oldUnit).forEach(p => {
@@ -279,7 +279,6 @@ export function PantryCheckView({
       onUpdateProduct({ id: p.id, unit: "יחידות" });
     });
   };
-  // --------------------------------
 
   const lowerQuery = searchQuery.toLowerCase();
   const displayDepts = useMemo(() => {
@@ -376,7 +375,7 @@ export function PantryCheckView({
               <UnitRow key={unit} unit={unit} isSystem={SYSTEM_UNITS.includes(unit)} onRename={handleUpdateUnit} onDelete={() => handleDeleteUnit(unit)} />
             ))}
           </div>
-          <DialogFooter><Button className="w-full rounded-xl py-6 font-bold bg-indigo-600 hover:bg-indigo-700" onClick={() => setManageUnitsOpen(false)}>סיום</Button></DialogFooter>
+          <DialogFooter><Button className="w-full rounded-xl py-6 font-bold bg-indigo-600 hover:bg-indigo-700 text-white" onClick={() => setManageUnitsOpen(false)}>סיום</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
@@ -404,7 +403,7 @@ function UnitRow({ unit, isSystem, onRename, onDelete }: { unit: string; isSyste
       {isEditing ? (
         <div className="flex flex-1 gap-2">
           <Input value={newName} onChange={(e) => setNewName(e.target.value)} className="h-10 text-right rounded-lg" autoFocus />
-          <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 rounded-lg" onClick={() => { onRename(unit, newName); setIsEditing(false); }}>שמור</Button>
+          <Button size="sm" className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg" onClick={() => { onRename(unit, newName); setIsEditing(false); }}>שמור</Button>
         </div>
       ) : (
         <>
