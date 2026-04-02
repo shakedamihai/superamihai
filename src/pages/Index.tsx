@@ -65,6 +65,7 @@ const Index = () => {
             onCopyList={copyListAsText}
             onFinishChecked={(checkedIds) => finishChecked.mutate(checkedIds)}
             onDeleteProduct={(id) => deleteProduct.mutate(id)}
+            onUpdateProduct={(updates) => updateProduct.mutate(updates)}
             isFinishing={finishChecked.isPending}
           />
         )}
