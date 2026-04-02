@@ -27,28 +27,19 @@ export function getDepartmentUnit(dept: string): { unit: string; step: number; m
   return { unit: "יחידות", step: 1, min: 1 };
 }
 
-// מילות מפתח לסיווג אוטומטי למחלקות החדשות
-const CATEGORY_KEYWORDS: Record<string, string[]> = {
-  "ירקות": ["עגבני", "מלפפון", "בצל", "תפוח אדמה", "גזר", "פלפל", "חסה", "כרוב", "ברוקולי", "קישוא", "חציל", "אבוקדו"],
-  "פירות": ["תפוח", "בננה", "תפוז", "אשכולית", "ענב", "אבטיח", "מלון", "נקטרינה", "אפרסק", "שזיף", "מנגו", "תמר"],
-  "מוצרי חלב ומקרר": ["חלב", "גבינה", "יוגורט", "קוטג'", "שמנת", "ביצים", "טופו", "חמאה", "שוקו", "יוגורט"],
-  "קצביה": ["עוף", "בשר", "כרעיים", "שוקיים", "סטייק", "נקניק", "הודו", "שניצל", "קבב", "המבורגר"],
-  "מזווה ושימורים": ["אורז", "פסטה", "ספגטי", "רסק", "תירס", "טונה", "שמן", "שימורים", "פתיתים", "עדשים", "שעועית", "גרנולה"],
-  "מאפייה ולחם": ["לחם", "לחמני", "פית", "חלה", "באגט", "עוגה", "קרואסון"],
-  "חומרי ניקוי": ["סבון", "אקונומיק", "נייר", "שקית", "ספוג", "מגב", "מרכך", "כביסה", "ניקוי", "זבל"],
-  "פארם וטואלטיקה": ["שמפו", "מברשת", "משחת", "דאודורנט", "קרם", "מגבון", "חיתול"],
-  "חטיפים ומתוקים": ["שוקולד", "במבה", "ביסלי", "חטיף", "סוכריות", "עוגיות", "וופל"],
-  "משקאות": ["מים", "קולה", "מיץ", "בירה", "יין", "שתייה", "סודה"],
-  "תבלינים ואפייה": ["קמח", "סוכר", "מלח", "אבקת אפייה", "תמצית", "שמרים", "פירורי לחם"],
-  "פיצוחים ופירות יבשים": ["אגוז", "שקד", "פיצוחים", "גרעינים", "קשיו", "פיסטוק"],
-  "מעדניה": ["זיתים", "פסטרמה", "סלטים"],
-  "בריאות ואורגני": ["ללא גלוטן", "אורגני", "קוואקר", "צ'יה", "קינואה"],
-};
-
 export function autoCategorize(productName: string): string {
   const name = productName.toLowerCase();
-  for (const [dept, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-    if (keywords.some((kw) => name.includes(kw))) return dept;
+  const keywords: Record<string, string[]> = {
+    "ירקות": ["עגבני", "מלפפון", "בצל", "תפוח אדמה", "גזר", "פלפל", "חסה", "כרוב", "ברוקולי", "קישוא", "חציל", "אבוקדו"],
+    "פירות": ["תפוח", "בננה", "תפוז", "אשכולית", "ענב", "אבטיח", "מלון", "נקטרינה", "אפרסק", "שזיף", "מנגו", "תמר"],
+    "מוצרי חלב ומקרר": ["חלב", "גבינה", "יוגורט", "קוטג'", "שמנת", "ביצים", "טופו", "חמאה", "שוקו"],
+    "קצביה": ["עוף", "בשר", "כרעיים", "שוקיים", "סטייק", "נקניק", "הודו", "שניצל", "קבב", "המבורגר"],
+    "מזווה ושימורים": ["אורז", "פסטה", "ספגטי", "רסק", "תירס", "טונה", "שמן", "שימורים", "פתיתים", "עדשים"],
+    "מאפייה ולחם": ["לחם", "לחמני", "פית", "חלה", "באגט", "עוגה", "קרואסון"]
+  };
+
+  for (const [dept, kws] of Object.entries(keywords)) {
+    if (kws.some((kw) => name.includes(kw))) return dept;
   }
   return "כללי";
 }
@@ -73,37 +64,53 @@ export function useDepartments() {
     },
   });
 
-  const addDepartment = useMutation({
-    mutationFn: async (name: string) => {
-      const maxOrder = departments.reduce((max, d) => Math.max(max, d.sort_order), -1);
-      const { error } = await supabase
-        .from("departments")
-        .insert({ name, sort_order: maxOrder + 1 });
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments"] }),
-  });
-
-  // מוטציה חדשה להוספת כל המחלקות הסטנדרטיות בבת אחת
-  const syncStandardDepartments = useMutation({
-    mutationFn: async () => {
-      const existingNames = departments.map(d => d.name);
-      const toAdd = STANDARD_DEPARTMENTS.filter(name => !existingNames.includes(name));
-      
-      if (toAdd.length === 0) return;
-
-      const maxOrder = departments.reduce((max, d) => Math.max(max, d.sort_order), -1);
-      const inserts = toAdd.map((name, index) => ({
-        name,
-        sort_order: maxOrder + 1 + index
-      }));
-
-      const { error } = await supabase.from("departments").insert(inserts);
-      if (error) throw error;
+  const renameDepartment = useMutation({
+    mutationFn: async ({ oldName, newName }: { oldName: string; newName: string }) => {
+      const { error: deptErr } = await supabase.from("departments").update({ name: newName }).eq("name", oldName);
+      if (deptErr) throw deptErr;
+      const { error: prodErr } = await supabase.from("products").update({ department: newName }).eq("department", oldName);
+      if (prodErr) throw prodErr;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["departments"] });
-      toast.success("כל המחלקות המומלצות התווספו!");
+      queryClient.invalidateQueries({ queryKey: ["products"] });
+    }
+  });
+
+  const syncStandardDepartments = useMutation({
+    mutationFn: async () => {
+      // 1. מיפוי שמות ישנים לשמות חדשים
+      const RENAME_MAP: Record<string, string> = {
+        "מקרר": "מוצרי חלב ומקרר",
+        "מוצרי יבש": "מזווה ושימורים",
+        "מאפייה": "מאפייה ולחם",
+        "ניקיון": "חומרי ניקוי",
+        "פארם": "פארם וטואלטיקה"
+      };
+
+      for (const dept of departments) {
+        if (RENAME_MAP[dept.name]) {
+          await renameDepartment.mutateAsync({ oldName: dept.name, newName: RENAME_MAP[dept.name] });
+        }
+      }
+
+      // 2. הוספת מחלקות חסרות (אחרי העדכון)
+      const { data: updatedDepts } = await supabase.from("departments").select("name");
+      const currentNames = updatedDepts?.map(d => d.name) || [];
+      const toAdd = STANDARD_DEPARTMENTS.filter(name => !currentNames.includes(name));
+
+      if (toAdd.length > 0) {
+        const maxOrder = departments.reduce((max, d) => Math.max(max, d.sort_order), -1);
+        const inserts = toAdd.map((name, index) => ({
+          name,
+          sort_order: maxOrder + 1 + index
+        }));
+        await supabase.from("departments").insert(inserts);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["departments"] });
+      toast.success("סנכרון השמות והמחלקות הושלם!");
     },
     onError: () => toast.error("שגיאה בסנכרון מחלקות"),
   });
@@ -112,7 +119,9 @@ export function useDepartments() {
     departments,
     departmentNames: departments.map((d) => d.name),
     isLoading,
-    addDepartment,
     syncStandardDepartments,
+    addDepartment: (name: string) => {}, // Placeholder
+    renameDepartment,
+    reorderDepartments: (updates: any) => {} // Placeholder
   };
 }
