@@ -314,10 +314,33 @@ export function PantryCheckView({
               );
             })}
           </div>
+          <DragOverlay dropAnimation={null}>
+            {activeId && activeId.startsWith("dept-") ? (() => {
+              const draggedDeptId = activeId.replace("dept-", "");
+              const draggedDept = localDepts.find(d => d.id === draggedDeptId);
+              if (!draggedDept) return null;
+              const Icon = getDeptIcon(draggedDept.name);
+              const { borderClass, iconClass } = deptColors[draggedDept.name] || COLORS[0];
+              const items = localRecurring[draggedDept.name] || [];
+              return (
+                <div className="w-full flex justify-center">
+                  <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
+                    <div className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 shadow-sm">
+                      <GripVertical className="h-5 w-5 opacity-50" />
+                    </div>
+                    <div className={`flex-1 bg-white rounded-2xl shadow-lg border border-slate-100 border-r-8 ${borderClass} px-4 py-4 font-bold`}>
+                      <div className="flex items-center gap-3">
+                        <Icon className={`h-5 w-5 ${iconClass}`} />
+                        <span>{draggedDept.name}</span>
+                        <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{items.length}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })() : null}
+          </DragOverlay>
         </DndContext>
-      </div>
-
-      <Dialog open={manageUnitsOpen} onOpenChange={setManageUnitsOpen}>
         <DialogContent className="max-w-[95vw] sm:max-w-[400px] rounded-[2rem] p-6 font-sans">
           <DialogHeader><DialogTitle className="text-right text-xl font-black">ניהול יחידות מידה</DialogTitle></DialogHeader>
           <div className="py-4 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
