@@ -35,11 +35,14 @@ export function SortableProductRow({
 
   const lactoseFree = isLactoseFree(product.product_name);
 
-  // לוגיקת עיבוד היחידות
-  let baseUnitDisplay = product.unit?.includes("קילו") ? "ק\"ג" : (product.unit || "יחידות");
-  if (product.base_quantity === 1 && (baseUnitDisplay === "יחידות" || !product.unit)) {
-    baseUnitDisplay = "יחידה";
-  }
+  // לוגיקת יחידות אחידה: ק"ג או יחידות (גם ל-1)
+  const unitDisplay = product.unit?.includes("קילו") ? "ק\"ג" : (product.unit || "יחידות");
+  
+  // חישוב מה שחסר
+  const missingQuantity = Math.max(0, product.base_quantity - product.current_stock);
+  const stockInfoText = missingQuantity > 0 
+    ? `חסר ${missingQuantity} ${unitDisplay}` 
+    : "המלאי מלא";
 
   return (
     <div
@@ -63,8 +66,8 @@ export function SortableProductRow({
             {product.product_name}
           </span>
           <div className="flex items-center gap-2 mt-0.5">
-            <span className="text-xs text-muted-foreground">
-              {product.current_stock} / {product.base_quantity} {baseUnitDisplay}
+            <span className={`text-xs font-medium ${missingQuantity > 0 ? "text-orange-600" : "text-emerald-600"}`}>
+              {stockInfoText}
             </span>
             {lactoseFree && (
               <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">
@@ -80,25 +83,24 @@ export function SortableProductRow({
         </div>
       </div>
 
-      {/* כפתורי הפלוס והמינוס שחזרו למקומם */}
       <div className="flex items-center gap-2 px-2 border-x border-slate-100 mx-2">
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8 rounded-full border-slate-200"
+          className="h-8 w-8 rounded-full"
           onClick={() => onUpdateStock(product.id, Math.max(0, product.current_stock - 1))}
         >
           <Minus className="h-3 w-3" />
         </Button>
         
-        <span className="w-4 text-center font-black text-sm text-slate-700">
+        <span className="w-4 text-center font-black text-sm">
           {product.current_stock}
         </span>
 
         <Button
           variant="outline"
           size="icon"
-          className="h-8 w-8 rounded-full border-slate-200 bg-slate-50"
+          className="h-8 w-8 rounded-full"
           onClick={() => onUpdateStock(product.id, product.current_stock + 1)}
         >
           <Plus className="h-3 w-3" />
@@ -106,18 +108,8 @@ export function SortableProductRow({
       </div>
 
       <div className="flex items-center gap-1">
-        <button
-          onClick={onEdit}
-          className="p-2 text-muted-foreground/40 hover:text-primary hover:bg-primary/5 rounded-lg transition-colors"
-        >
-          <Pencil className="h-4 w-4" />
-        </button>
-        <button
-          onClick={onDelete}
-          className="p-2 text-muted-foreground/40 hover:text-destructive hover:bg-destructive/5 rounded-lg transition-colors"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        <button onClick={onEdit} className="p-2 text-muted-foreground/40 hover:text-primary rounded-lg"><Pencil className="h-4 w-4" /></button>
+        <button onClick={onDelete} className="p-2 text-muted-foreground/40 hover:text-destructive rounded-lg"><Trash2 className="h-4 w-4" /></button>
       </div>
     </div>
   );
