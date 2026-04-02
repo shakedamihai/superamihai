@@ -12,6 +12,21 @@ interface SortableProductRowProps {
   onUpdateStock: (id: string, stock: number) => void;
 }
 
+// פונקציית עזר להמרת יחידות מידה ללשון רבים ולקיצורים תקניים
+const formatUnit = (unit?: string) => {
+  if (!unit) return "יחידות";
+  
+  const lowerUnit = unit.toLowerCase();
+  if (lowerUnit.includes("קילו")) return "ק\"ג";
+  if (lowerUnit.includes("יחיד")) return "יחידות";
+  if (lowerUnit.includes("חביל")) return "חבילות";
+  if (lowerUnit.includes("מארז")) return "מארזים";
+  if (lowerUnit.includes("בקבוק")) return "בקבוקים";
+  if (lowerUnit.includes("פחי")) return "פחיות";
+  
+  return unit; // מחזיר את המקור אם לא זיהה (למשל "ליטר" או "גרם")
+};
+
 export function SortableProductRow({
   product,
   onEdit,
@@ -34,11 +49,7 @@ export function SortableProductRow({
   };
 
   const lactoseFree = isLactoseFree(product.product_name);
-
-  // לוגיקת יחידות אחידה: ק"ג או יחידות (גם ל-1)
-  const unitDisplay = product.unit?.includes("קילו") ? "ק\"ג" : (product.unit || "יחידות");
-  
-  // חישוב מה שחסר
+  const unitDisplay = formatUnit(product.unit);
   const missingQuantity = Math.max(0, product.base_quantity - product.current_stock);
   const stockInfoText = missingQuantity > 0 
     ? `חסר ${missingQuantity} ${unitDisplay}` 
