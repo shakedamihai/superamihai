@@ -6,7 +6,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { EditProductDialog } from "./EditProductDialog";
 import {
   AlertDialog,
@@ -45,6 +45,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableProductRow } from "./SortableProductRow";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface PantryCheckViewProps {
   productsByDepartment: Record<string, Product[]>;
@@ -60,7 +61,7 @@ interface PantryCheckViewProps {
 }
 
 function SortableDepartmentItem({ dept, children }: { dept: Department; children: React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: dept.id } as any);
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: `dept-${dept.id}` } as any);
   
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -98,7 +99,8 @@ export function PantryCheckView({
   departmentNames,
   onAddDepartment,
 }: PantryCheckViewProps) {
-  // נשתמש ב-useMemo לחישוב הנתונים - זה בטוח יותר מ-useEffect ומונע מסך לבן
+  const queryClient = useQueryClient();
+
   const recurringByDept = useMemo(() => {
     return Object.entries(productsByDepartment || {}).reduce((acc, [dept, items]) => {
       const recurring = (items || []).filter((p) => !p.is_one_time);
@@ -113,6 +115,19 @@ export function PantryCheckView({
       .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [departments, recurringByDept]);
 
+  // Build all sortable IDs: dept-{id} for departments, product id for products
+  const allSortableIds = useMemo(() => {
+    const ids: string[] = [];
+    for (const dept of sortedDepts) {
+      ids.push(`dept-${dept.id}`);
+      const products = recurringByDept[dept.name] || [];
+      for (const p of products) {
+        ids.push(p.id);
+      }
+    }
+    return ids;
+  }, [sortedDepts, recurringByDept]);
+
   const [activeId, setActiveId] = useState<string | null>(null);
   const [openDepts, setOpenDepts] = useState<Record<string, boolean>>({});
   const [editProduct, setEditProduct] = useState<Product | null>(null);
@@ -124,55 +139,86 @@ export function PantryCheckView({
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } })
   );
 
-  const handleDeptDragStart = (event: DragStartEvent) => {
+  const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as string);
   };
 
-  const handleDeptDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
     setActiveId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-    
-    const oldIndex = sortedDepts.findIndex((d) => d.id === active.id);
-    const newIndex = sortedDepts.findIndex((d) => d.id === over.id);
-    
-    if (oldIndex !== -1 && newIndex !== -1) {
-      const reordered = arrayMove(sortedDepts, oldIndex, newIndex);
-      onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
-    }
-  };
 
-  const handleProductDragEnd = (deptName: string) => (event: DragEndEvent) => {
-    const { active, over } = event;
-    if (!over || active.id === over.id) return;
-    
-    const items = recurringByDept[deptName];
-    if (!items) return;
-    
-    const oldIndex = items.findIndex((p) => p.id === active.id);
-    const newIndex = items.findIndex((p) => p.id === over.id);
-    
-    if (oldIndex !== -1 && newIndex !== -1) {
-      const reordered = arrayMove(items, oldIndex, newIndex);
-      onReorderProducts(reordered.map((p, i) => ({ id: p.id, sort_order: i })));
+    const activeStr = active.id as string;
+    const overStr = over.id as string;
+
+    // Department reorder
+    if (activeStr.startsWith("dept-") && overStr.startsWith("dept-")) {
+      const activeRealId = activeStr.replace("dept-", "");
+      const overRealId = overStr.replace("dept-", "");
+
+      const oldIndex = sortedDepts.findIndex((d) => d.id === activeRealId);
+      const newIndex = sortedDepts.findIndex((d) => d.id === overRealId);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reordered = arrayMove(sortedDepts, oldIndex, newIndex);
+        const updates = reordered.map((d, i) => ({ id: d.id, sort_order: i }));
+
+        // Optimistic update
+        queryClient.setQueryData<Department[]>(["departments"], (old) => {
+          if (!old) return old;
+          return old.map((d) => {
+            const upd = updates.find((u) => u.id === d.id);
+            return upd ? { ...d, sort_order: upd.sort_order } : d;
+          });
+        });
+
+        onReorderDepartments(updates);
+      }
+      return;
     }
-  };
+
+    // Product reorder - find which department both belong to
+    for (const [deptName, items] of Object.entries(recurringByDept)) {
+      const oldIndex = items.findIndex((p) => p.id === activeStr);
+      const newIndex = items.findIndex((p) => p.id === overStr);
+
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        const updates = reordered.map((p, i) => ({ id: p.id, sort_order: i }));
+
+        // Optimistic update
+        queryClient.setQueryData<Product[]>(["products"], (old) => {
+          if (!old) return old;
+          return old.map((p) => {
+            const upd = updates.find((u) => u.id === p.id);
+            return upd ? { ...p, sort_order: upd.sort_order } : p;
+          }).sort((a, b) => {
+            if (a.department !== b.department) return a.department.localeCompare(b.department);
+            return (a.sort_order || 0) - (b.sort_order || 0);
+          });
+        });
+
+        onReorderProducts(updates);
+        break;
+      }
+    }
+  }, [sortedDepts, recurringByDept, queryClient, onReorderDepartments, onReorderProducts]);
 
   return (
     <div className="w-full flex flex-col items-center py-4 min-h-screen">
       <div className="w-full max-w-[calc(100vw-32px)] space-y-4">
-        <DndContext 
-          sensors={sensors} 
-          collisionDetection={closestCenter} 
-          onDragStart={handleDeptDragStart}
-          onDragEnd={handleDeptDragEnd}
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragStart={handleDragStart}
+          onDragEnd={handleDragEnd}
         >
-          <SortableContext items={sortedDepts.map(d => d.id)} strategy={verticalListSortingStrategy}>
+          <SortableContext items={sortedDepts.map(d => `dept-${d.id}`)} strategy={verticalListSortingStrategy}>
             <div className="flex flex-col">
               {sortedDepts.map((dept) => (
                 <SortableDepartmentItem key={dept.id} dept={dept}>
                   <Collapsible 
-                    open={activeId === dept.id ? false : (openDepts[dept.name] !== false)} 
+                    open={activeId ? false : (openDepts[dept.name] !== false)} 
                     onOpenChange={(open) => setOpenDepts(prev => ({ ...prev, [dept.name]: open }))}
                   >
                     <div className="flex items-center gap-2">
@@ -191,21 +237,19 @@ export function PantryCheckView({
                       </button>
                     </div>
                     <CollapsibleContent className="mt-2 space-y-2 pb-4">
-                      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleProductDragEnd(dept.name)}>
-                        <SortableContext items={recurringByDept[dept.name]?.map(p => p.id) || []} strategy={verticalListSortingStrategy}>
-                          <div className="flex flex-col gap-2">
-                            {recurringByDept[dept.name]?.map((p) => (
-                              <SortableProductRow 
-                                key={p.id} 
-                                product={p} 
-                                onUpdateStock={onUpdateStock} 
-                                onEdit={setEditProduct} 
-                                onDelete={setDeleteTarget} 
-                              />
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </DndContext>
+                      <SortableContext items={recurringByDept[dept.name]?.map(p => p.id) || []} strategy={verticalListSortingStrategy}>
+                        <div className="flex flex-col gap-2">
+                          {recurringByDept[dept.name]?.map((p) => (
+                            <SortableProductRow 
+                              key={p.id} 
+                              product={p} 
+                              onUpdateStock={onUpdateStock} 
+                              onEdit={setEditProduct} 
+                              onDelete={setDeleteTarget} 
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
                     </CollapsibleContent>
                   </Collapsible>
                 </SortableDepartmentItem>
