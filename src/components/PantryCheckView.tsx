@@ -1,4 +1,8 @@
-import { ChevronDown, Pencil, GripVertical, Search } from "lucide-react";
+import { 
+  ChevronDown, Pencil, GripVertical, Search, 
+  Beef, Carrot, Milk, Snowflake, Sparkles, 
+  Croissant, CupSoda, Cookie, Package, Baby, ShoppingBasket 
+} from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { Department } from "@/hooks/useDepartments";
 import {
@@ -59,48 +63,53 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
-// --- פונקציות עיצוב מיוחדות ---
+// --- מערכת העיצוב החדשה (Clean UI & Semantic Colors) ---
 
-// פלטת צבעים מודרנית (פסטל)
-const PASTEL_COLORS = [
-  "bg-emerald-100 text-emerald-900 border-emerald-200",
-  "bg-blue-100 text-blue-900 border-blue-200",
-  "bg-rose-100 text-rose-900 border-rose-200",
-  "bg-amber-100 text-amber-900 border-amber-200",
-  "bg-purple-100 text-purple-900 border-purple-200",
-  "bg-cyan-100 text-cyan-900 border-cyan-200",
-  "bg-orange-100 text-orange-900 border-orange-200",
-  "bg-indigo-100 text-indigo-900 border-indigo-200",
-  "bg-fuchsia-100 text-fuchsia-900 border-fuchsia-200",
-  "bg-lime-100 text-lime-900 border-lime-200",
-];
-
-// יצירת צבע קבוע לפי שם המחלקה
-const getDynamicDeptColor = (name: string) => {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) {
-    hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  }
-  return PASTEL_COLORS[Math.abs(hash) % PASTEL_COLORS.length];
-};
-
-// זיהוי אימוג'י אוטומטי לפי שם
-const getDeptIcon = (name: string) => {
+const getDeptStyling = (name: string) => {
   const lower = name.toLowerCase();
-  if (lower.includes('ירקות') || lower.includes('פירות')) return '🥗';
-  if (lower.includes('חלב') || lower.includes('מקרר') || lower.includes('גבינות')) return '🥛';
-  if (lower.includes('בשר') || lower.includes('עוף') || lower.includes('דגים')) return '🥩';
-  if (lower.includes('קפואים')) return '❄️';
-  if (lower.includes('פארם') || lower.includes('נקיון') || lower.includes('טיפוח')) return '🧼';
-  if (lower.includes('מאפיה') || lower.includes('לחם')) return '🥖';
-  if (lower.includes('שתיה') || lower.includes('משקאות')) return '🥤';
-  if (lower.includes('מתוקים') || lower.includes('חטיפים') || lower.includes('שוקולד')) return '🍫';
-  if (lower.includes('מזווה') || lower.includes('יבש') || lower.includes('שימורים')) return '🥫';
-  if (lower.includes('תינוקות')) return '🍼';
-  return '🛒'; // אימוג'י דיפולטיבי
+  
+  // מיפוי חכם: מחפש מילות מפתח ומתאים אייקון מודרני (Lucide) וצבע מתאים
+  if (lower.includes('ירק') || lower.includes('פיר')) 
+    return { Icon: Carrot, borderClass: 'border-r-green-500', iconClass: 'text-green-500' };
+  
+  if (lower.includes('חלב') || lower.includes('מקרר') || lower.includes('גבינ')) 
+    return { Icon: Milk, borderClass: 'border-r-blue-500', iconClass: 'text-blue-500' };
+  
+  if (lower.includes('בשר') || lower.includes('עוף') || lower.includes('דג')) 
+    return { Icon: Beef, borderClass: 'border-r-red-500', iconClass: 'text-red-500' };
+  
+  if (lower.includes('קפוא')) 
+    return { Icon: Snowflake, borderClass: 'border-r-cyan-400', iconClass: 'text-cyan-500' };
+  
+  if (lower.includes('פארם') || lower.includes('נקיון') || lower.includes('טיפוח') || lower.includes('סבון')) 
+    return { Icon: Sparkles, borderClass: 'border-r-purple-500', iconClass: 'text-purple-500' };
+  
+  if (lower.includes('מאפי') || lower.includes('לחם')) 
+    return { Icon: Croissant, borderClass: 'border-r-amber-500', iconClass: 'text-amber-500' };
+  
+  if (lower.includes('שתי') || lower.includes('משק')) 
+    return { Icon: CupSoda, borderClass: 'border-r-sky-400', iconClass: 'text-sky-500' };
+  
+  if (lower.includes('מתוק') || lower.includes('חטיף') || lower.includes('שוקולד')) 
+    return { Icon: Cookie, borderClass: 'border-r-pink-500', iconClass: 'text-pink-500' };
+  
+  if (lower.includes('תינוק')) 
+    return { Icon: Baby, borderClass: 'border-r-rose-400', iconClass: 'text-rose-400' };
+  
+  if (lower.includes('מזווה') || lower.includes('יבש') || lower.includes('שימור')) 
+    return { Icon: Package, borderClass: 'border-r-orange-500', iconClass: 'text-orange-500' };
+
+  // מנגנון גיבוי נקי ואלגנטי למחלקות לא מוכרות
+  const fallbackStyles = [
+    { borderClass: 'border-r-slate-400', iconClass: 'text-slate-500' },
+    { borderClass: 'border-r-indigo-400', iconClass: 'text-indigo-500' },
+    { borderClass: 'border-r-teal-400', iconClass: 'text-teal-500' },
+  ];
+  const hash = name.length % fallbackStyles.length;
+  return { Icon: ShoppingBasket, ...fallbackStyles[hash] };
 };
 
-// -------------------------------
+// --------------------------------------------------------
 
 function SortableDepartmentItem({ dept, disabled, children }: { dept: Department; disabled?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
@@ -111,9 +120,9 @@ function SortableDepartmentItem({ dept, disabled, children }: { dept: Department
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: transition || 'transform 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-    opacity: isDragging ? 0.7 : 1,
+    opacity: isDragging ? 0.8 : 1,
     zIndex: isDragging ? 50 : undefined,
-    scale: isDragging ? "1.02" : "1", // אפקט גדילה קטנטן בגרירה
+    scale: isDragging ? "1.01" : "1",
   };
 
   return (
@@ -122,10 +131,10 @@ function SortableDepartmentItem({ dept, disabled, children }: { dept: Department
         <button
           {...attributes}
           {...listeners}
-          className="w-10 h-[60px] flex items-center justify-center bg-card border rounded-2xl text-muted-foreground shrink-0 touch-none focus:outline-none shadow-sm hover:bg-accent"
+          className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 touch-none focus:outline-none shadow-sm hover:bg-gray-50 transition-colors"
           style={{ touchAction: 'none' }}
         >
-          <GripVertical className="h-5 w-5 opacity-70" />
+          <GripVertical className="h-5 w-5 opacity-50" />
         </button>
         <div className="flex-1 overflow-hidden">{children}</div>
       </div>
@@ -273,18 +282,17 @@ export function PantryCheckView({
   }, [localDepts, localRecurring, searchQuery, lowerQuery]);
 
   return (
-    <div className="w-full flex flex-col items-center py-4 min-h-screen bg-gray-50/30">
+    <div className="w-full flex flex-col items-center py-4 min-h-screen bg-gray-50/50">
       <div className="w-full max-w-[calc(100vw-32px)] space-y-6">
         
-        {/* שורת חיפוש מעוצבת */}
         <div className="relative w-full shadow-sm rounded-2xl">
           <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-            <Search className="h-5 w-5 text-primary" />
+            <Search className="h-5 w-5 text-muted-foreground/70" />
           </div>
           <Input
             type="text"
             placeholder="חיפוש מחלקה או פריט..."
-            className="w-full pl-4 pr-12 py-6 rounded-2xl bg-card border-muted text-lg shadow-sm focus-visible:ring-primary/20"
+            className="w-full pl-4 pr-12 py-6 rounded-2xl bg-white border-border text-lg shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -298,14 +306,14 @@ export function PantryCheckView({
         >
           <div className="space-y-4">
             {localDepts.length === 0 ? (
-              <div className="text-center py-16 bg-white rounded-3xl border border-dashed">
-                <div className="text-4xl mb-3">🛒</div>
+              <div className="text-center py-16 bg-white rounded-3xl border border-dashed shadow-sm">
+                <Package className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
                 <p className="text-muted-foreground font-medium">אין מוצרים במזווה עדיין</p>
               </div>
             ) : displayDepts.length === 0 && searchQuery ? (
-              <div className="text-center py-16 bg-white rounded-3xl border border-dashed">
-                <div className="text-4xl mb-3">🔍</div>
-                <p className="text-muted-foreground font-medium">לא נמצאו תוצאות</p>
+              <div className="text-center py-16 bg-white rounded-3xl border border-dashed shadow-sm">
+                <Search className="h-12 w-12 mx-auto mb-3 text-muted-foreground/40" />
+                <p className="text-muted-foreground font-medium">לא נמצאו תוצאות לחיפוש</p>
               </div>
             ) : (
               <SortableContext
@@ -323,9 +331,8 @@ export function PantryCheckView({
                         : deptItems.filter(p => p.product_name?.toLowerCase().includes(lowerQuery)))
                     : deptItems;
 
-                  // משיגים את הצבע והאימוג'י
-                  const colorClass = getDynamicDeptColor(dept.name);
-                  const icon = getDeptIcon(dept.name);
+                  // משיגים את העיצוב (אייקון, צבע גבול, וצבע אייקון)
+                  const { Icon, borderClass, iconClass } = getDeptStyling(dept.name);
 
                   return (
                     <SortableDepartmentItem key={dept.id} dept={dept} disabled={disableDeptDrag}>
@@ -334,27 +341,29 @@ export function PantryCheckView({
                         onOpenChange={(open) =>
                           setOpenDepts({ ...openDepts, [dept.name]: open })
                         }
-                        className="bg-white rounded-2xl shadow-sm border overflow-hidden"
+                        // רקע לבן נקי, פס צבע עבה בצד ימין בלבד
+                        className={`bg-white rounded-2xl shadow-sm border border-border overflow-hidden border-r-4 ${borderClass}`}
                       >
                         <div className="flex items-center gap-1 p-1">
                           <CollapsibleTrigger
-                            className={`flex-1 flex items-center justify-between px-4 py-3 rounded-xl border font-bold transition-colors ${colorClass}`}
+                            className="flex-1 flex items-center justify-between px-4 py-3 bg-transparent font-bold transition-colors"
                           >
-                            <div className="flex items-center gap-2.5">
-                              <span className="text-xl">{icon}</span>
-                              <span className="text-[1.05rem] tracking-tight">{dept.name}</span>
-                              <span className="ml-2 px-2 py-0.5 bg-white/50 rounded-full text-xs font-black shadow-sm">
+                            <div className="flex items-center gap-3">
+                              {/* אייקון וקטורי בצבע המחלקה */}
+                              <Icon className={`h-5 w-5 ${iconClass}`} />
+                              <span className="text-[1.05rem] tracking-tight text-foreground">{dept.name}</span>
+                              <span className="ml-2 px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full text-xs font-black">
                                 {displayItems.length}
                               </span>
                             </div>
-                            <ChevronDown className={`h-5 w-5 opacity-70 transition-transform duration-300 ${openDepts[dept.name] !== false || searchQuery ? "rotate-180" : ""}`} />
+                            <ChevronDown className={`h-5 w-5 text-muted-foreground/50 transition-transform duration-300 ${openDepts[dept.name] !== false || searchQuery ? "rotate-180" : ""}`} />
                           </CollapsibleTrigger>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               setRenameDept({ oldName: dept.name, newName: dept.name });
                             }}
-                            className="p-3.5 rounded-xl bg-card hover:bg-accent text-muted-foreground transition-colors focus:outline-none"
+                            className="p-3.5 rounded-xl bg-transparent hover:bg-gray-50 text-muted-foreground/50 transition-colors focus:outline-none"
                           >
                             <Pencil className="h-4 w-4" />
                           </button>
@@ -364,7 +373,7 @@ export function PantryCheckView({
                             items={displayItems.map((p) => p.id)}
                             strategy={verticalListSortingStrategy}
                           >
-                            <div className="space-y-1.5">
+                            <div className="space-y-1.5 border-t border-border/50 pt-3">
                               {displayItems.map((product) => (
                                 <SortableProductRow
                                   key={product.id}
