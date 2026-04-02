@@ -97,7 +97,7 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
       <div className="bg-white rounded-[1.5rem] border border-slate-200 p-6 shadow-sm mt-2">
         <div className="flex items-center gap-2 mb-4">
           <div className="p-1.5 bg-amber-50 rounded-lg"><Zap className="h-4 w-4 text-amber-500 fill-amber-500" /></div>
-          <h3 className="font-bold text-slate-800">מוצרים חד פעמיים</h3>
+          <h3 className="font-bold text-slate-800">הוספת מוצרים חד פעמיים</h3>
         </div>
         <form onSubmit={handleQuickAdd} className="flex gap-2 items-center">
           <Input 
