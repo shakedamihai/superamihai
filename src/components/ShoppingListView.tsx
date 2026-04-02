@@ -28,6 +28,7 @@ import {
 interface ShoppingListViewProps {
   shoppingByDepartment: Record<string, Product[]>;
   shoppingList: Product[];
+  departmentOrder: string[];
   onCopyList: () => void;
   onFinishChecked: (checkedIds: Set<string>) => void;
   onDeleteProduct: (id: string) => void;
@@ -66,6 +67,7 @@ const getDeptIcon = (name: string) => {
 export function ShoppingListView({
   shoppingByDepartment,
   shoppingList,
+  departmentOrder,
   onCopyList,
   onFinishChecked,
   onDeleteProduct,
@@ -94,14 +96,20 @@ export function ShoppingListView({
   };
 
   const filteredDepts = useMemo(() => {
-    const keys = Object.keys(shoppingByDepartment).sort();
+    const keys = Object.keys(shoppingByDepartment);
+    // Sort by department order from pantry
+    keys.sort((a, b) => {
+      const idxA = departmentOrder.indexOf(a);
+      const idxB = departmentOrder.indexOf(b);
+      return (idxA === -1 ? 999 : idxA) - (idxB === -1 ? 999 : idxB);
+    });
     if (!searchQuery) return keys;
     return keys.filter(dept => {
       const matchesDept = dept.toLowerCase().includes(lowerQuery);
       const items = shoppingByDepartment[dept] || [];
       return matchesDept || items.some(p => p.product_name?.toLowerCase().includes(lowerQuery));
     });
-  }, [shoppingByDepartment, searchQuery, lowerQuery]);
+  }, [shoppingByDepartment, searchQuery, lowerQuery, departmentOrder]);
 
   if (shoppingList.length === 0) {
     return (
