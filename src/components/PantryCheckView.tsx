@@ -59,11 +59,15 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
+// קומפוננטה בטוחה למחלקה נגררת
 function SortableDepartmentItem({ dept, children }: { dept: Department; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ 
-    id: dept.id 
+    id: dept?.id || "fallback-id" 
   });
   
+  // הגנה למניעת קריסה אם מחלקה לא תקינה
+  if (!dept || !dept.id) return null;
+
   const style = {
     transform: CSS.Transform.toString(transform),
     transition: transition || 'transform 150ms cubic-bezier(0.25, 1, 0.5, 1)',
@@ -89,38 +93,48 @@ function SortableDepartmentItem({ dept, children }: { dept: Department; children
 }
 
 export function PantryCheckView({
-  productsByDepartment,
-  departments,
+  productsByDepartment = {}, // הגנה - ערך דיפולטיבי
+  departments = [], // הגנה - ערך דיפולטיבי
   onUpdateStock,
   onUpdateProduct,
   onDeleteProduct,
   onReorderProducts,
   onRenameDepartment,
   onReorderDepartments,
-  departmentNames,
+  departmentNames = [],
   onAddDepartment,
 }: PantryCheckViewProps) {
   
-  // Base data calculation
+  // חישוב בטוח של המידע המגיע מהשרת
   const baseRecurringByDept = useMemo(() => {
-    return Object.entries(productsByDepartment || {}).reduce((acc, [dept, items]) => {
-      const recurring = (items || []).filter((p) => !p.is_one_time);
-      if (recurring.length > 0) acc[dept] = recurring;
-      return acc;
-    }, {} as Record<string, Product[]>);
+    try {
+      return Object.entries(productsByDepartment || {}).reduce((acc, [dept, items]) => {
+        const recurring = (items || []).filter((p) => p && !p.is_one_time);
+        if (recurring.length > 0) acc[dept] = recurring;
+        return acc;
+      }, {} as Record<string, Product[]>);
+    } catch (e) {
+      console.error("Error formatting products:", e);
+      return {};
+    }
   }, [productsByDepartment]);
 
   const baseSortedDepts = useMemo(() => {
-    return [...(departments || [])]
-      .filter((d) => baseRecurringByDept[d.name])
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    try {
+      return [...(departments || [])]
+        .filter((d) => d && d.name && baseRecurringByDept[d.name])
+        .sort((a, b) => (a?.sort_order || 0) - (b?.sort_order || 0));
+    } catch (e) {
+      console.error("Error sorting depts:", e);
+      return [];
+    }
   }, [departments, baseRecurringByDept]);
 
-  // Local state for optimistic updates
+  // סטייט מקומי לעדכונים אופטימיים (מהירים ללא דיליי)
   const [localDepts, setLocalDepts] = useState<Department[]>(baseSortedDepts);
   const [localRecurring, setLocalRecurring] = useState<Record<string, Product[]>>(baseRecurringByDept);
 
-  // Sync with server data
+  // סנכרון הסטייט עם השרת בצורה בטוחה
   useEffect(() => { setLocalDepts(baseSortedDepts); }, [baseSortedDepts]);
   useEffect(() => { setLocalRecurring(baseRecurringByDept); }, [baseRecurringByDept]);
 
@@ -129,6 +143,8 @@ export function PantryCheckView({
   const [editProduct, setEditProduct] = useState<Product | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Product | null>(null);
   const [renameDept, setRenameDept] = useState<{ oldName: string; newName: string } | null>(null);
+  const [newDeptName, setNewDeptName] = useState<string>("");
+  const [showAddDept, setShowAddDept] = useState<boolean>(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -136,24 +152,27 @@ export function PantryCheckView({
   );
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as string);
+    if (event.active && event.active.id) {
+      setActiveId(event.active.id as string);
+    }
   };
 
+  // פונקציית סיום גרירה מרכזית ובטוחה
   const handleDragEnd = (event: DragEndEvent) => {
     setActiveId(null);
     const { active, over } = event;
-    if (!over || active.id === over.id) return;
+    if (!over || !active || active.id === over.id) return;
 
-    // 1. Is it a department being dragged?
-    const isDeptDrag = localDepts.some((d) => d.id === active.id);
+    // 1. האם זאת מחלקה שנגררת?
+    const isDeptDrag = localDepts.some((d) => d && d.id === active.id);
 
     if (isDeptDrag) {
-      const oldIndex = localDepts.findIndex((d) => d.id === active.id);
-      const newIndex = localDepts.findIndex((d) => d.id === over.id);
+      const oldIndex = localDepts.findIndex((d) => d?.id === active.id);
+      const newIndex = localDepts.findIndex((d) => d?.id === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const reordered = arrayMove(localDepts, oldIndex, newIndex);
-        setLocalDepts(reordered);
+        setLocalDepts(reordered); // עדכון UI אופטימי ומיידי
         try {
           onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
         } catch(e) { console.error("Reorder Dept Error", e); }
@@ -161,10 +180,10 @@ export function PantryCheckView({
       return;
     }
 
-    // 2. If not a department, it's a product. Find its department.
+    // 2. אם זאת לא מחלקה, זה כנראה מוצר. נחפש באיזו מחלקה הוא נמצא
     let foundDeptName: string | null = null;
     for (const [deptName, items] of Object.entries(localRecurring)) {
-      if (items.some((p) => p.id === active.id)) {
+      if (items && items.some(p => p?.id === active.id)) {
         foundDeptName = deptName;
         break;
       }
@@ -173,8 +192,8 @@ export function PantryCheckView({
     // 3. Product moved within same department
     if (foundDeptName && localRecurring[foundDeptName]) {
       const items = localRecurring[foundDeptName];
-      const oldIndex = items.findIndex((p) => p.id === active.id);
-      const newIndex = items.findIndex((p) => p.id === over.id);
+      const oldIndex = items.findIndex((p) => p?.id === active.id);
+      const newIndex = items.findIndex((p) => p?.id === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1) {
         const newItems = arrayMove(items, oldIndex, newIndex);
@@ -193,57 +212,101 @@ export function PantryCheckView({
     }
   };
 
+  // MAIN RENDER
   return (
-    <div className="w-full flex flex-col items-center py-4 min-h-screen">
-      <div className="w-full max-w-[calc(100vw-32px)] space-y-4">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="space-y-4">
-            {localDepts.length === 0 ? (
-              <div className="text-center py-12">
-                <p className="text-muted-foreground mb-4">אין מחלקות עדיין</p>
-              </div>
-            ) : (
-              <SortableContext
-                items={localDepts.map((d) => d.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {localDepts.map((dept) => (
-                  <SortableDepartmentItem key={dept.id} dept={dept}>
-                    <Collapsible
-                      open={activeId === dept.id ? false : (openDepts[dept.name] !== false)}
-                      onOpenChange={(open) =>
-                        setOpenDepts({ ...openDepts, [dept.name]: open })
+    <div className="w-full max-w-6xl mx-auto px-4 py-6">
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="space-y-4">
+          {/* Header with Add Department Button */}
+          <div className="flex items-center justify-between mb-6">
+            <h1 className="text-2xl font-bold">בדיקת מחסן</h1>
+            <Dialog open={showAddDept} onOpenChange={setShowAddDept}>
+              <Button onClick={() => setShowAddDept(true)}>+ הוסף מחלקה</Button>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>הוסף מחלקה חדשה</DialogTitle>
+                </DialogHeader>
+                <Input
+                  placeholder="שם המחלקה"
+                  value={newDeptName}
+                  onChange={(e) => setNewDeptName(e.target.value)}
+                />
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setShowAddDept(false);
+                      setNewDeptName("");
+                    }}
+                  >
+                    ביטול
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      if (newDeptName.trim()) {
+                        onAddDepartment(newDeptName);
+                        setNewDeptName("");
+                        setShowAddDept(false);
                       }
-                    >
-                      <div className="flex items-center gap-2">
-                        <CollapsibleTrigger
-                          className={`flex-1 flex items-center justify-between px-4 py-3 rounded-lg border font-bold ${getDepartmentColor(dept.name)}`}
-                        >
-                          <span>{dept.name} ({localRecurring[dept.name]?.length || 0})</span>
-                          <ChevronDown className={`h-4 w-4 transition-transform ${openDepts[dept.name] !== false ? "rotate-180" : ""}`} />
-                        </CollapsibleTrigger>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRenameDept({ oldName: dept.name, newName: dept.name });
-                          }}
-                          className="p-3 border rounded-lg bg-card focus:outline-none"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
+                    }}
+                  >
+                    הוסף
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Departments List */}
+          {localDepts.length === 0 ? (
+            <div className="text-center py-12 bg-muted rounded-lg">
+              <p className="text-muted-foreground mb-4">אין מחלקות עדיין</p>
+            </div>
+          ) : (
+            <SortableContext
+              items={localDepts.map((d) => d.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {localDepts.map((dept) => (
+                <SortableDepartmentItem key={dept.id} dept={dept}>
+                  <Collapsible
+                    open={openDepts[dept.name] || false}
+                    onOpenChange={(open) =>
+                      setOpenDepts({ ...openDepts, [dept.name]: open })
+                    }
+                  >
+                    <CollapsibleTrigger className="w-full">
+                      <div
+                        className="p-4 rounded-lg flex items-center justify-between text-white hover:opacity-90 transition-opacity"
+                        style={{
+                          backgroundColor: getDepartmentColor(dept.name),
+                        }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-semibold text-lg">{dept.name}</h3>
+                          <span className="text-sm opacity-75">
+                            ({localRecurring[dept.name]?.length || 0} מוצרים)
+                          </span>
+                        </div>
+                        <ChevronDown className="h-5 w-5 transition-transform" />
                       </div>
-                      <CollapsibleContent className="mt-2 space-y-2 pb-4">
-                        <SortableContext
-                          items={localRecurring[dept.name]?.map((p) => p.id) || []}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div className="space-y-2">
-                            {localRecurring[dept.name]?.map((product) => (
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2">
+                      <SortableContext
+                        items={
+                          localRecurring[dept.name]?.map((p) => p.id) || []
+                        }
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-2 bg-muted/30 p-3 rounded-lg">
+                          {localRecurring[dept.name] &&
+                          localRecurring[dept.name].length > 0 ? (
+                            localRecurring[dept.name].map((product) => (
                               <SortableProductRow
                                 key={product.id}
                                 product={product}
@@ -251,73 +314,99 @@ export function PantryCheckView({
                                 onDelete={() => setDeleteTarget(product)}
                                 onUpdateStock={onUpdateStock}
                               />
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </SortableDepartmentItem>
-                ))}
-              </SortableContext>
-            )}
-          </div>
-        </DndContext>
-      </div>
+                            ))
+                          ) : (
+                            <p className="text-muted-foreground text-center py-4">
+                              אין מוצרים בקטגוריה זו
+                            </p>
+                          )}
+                        </div>
+                      </SortableContext>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </SortableDepartmentItem>
+              ))}
+            </SortableContext>
+          )}
+        </div>
+      </DndContext>
 
       {/* Edit Product Dialog */}
-      <EditProductDialog
-        product={editProduct}
-        open={!!editProduct}
-        onClose={() => setEditProduct(null)}
-        onSave={(updates) => {
-          onUpdateProduct(updates);
-        }}
-        departmentNames={departmentNames}
-        onAddDepartment={onAddDepartment}
-      />
-
-      {/* Rename Department Dialog */}
-      <Dialog open={!!renameDept} onOpenChange={(o) => !o && setRenameDept(null)}>
-        <DialogContent className="max-w-[90vw] rounded-2xl">
-          <DialogHeader><DialogTitle className="text-right">עריכת מחלקה</DialogTitle></DialogHeader>
-          <Input 
-            value={renameDept?.newName || ""} 
-            onChange={(e) => setRenameDept(prev => prev ? { ...prev, newName: e.target.value } : null)} 
-            className="text-right" 
-          />
-          <DialogFooter className="flex-row-reverse gap-2 pt-4">
-            <Button onClick={() => { 
-              if (renameDept?.newName.trim()) onRenameDepartment(renameDept.oldName, renameDept.newName.trim()); 
-              setRenameDept(null); 
-            }}>שמור</Button>
-            <Button variant="outline" onClick={() => setRenameDept(null)}>ביטול</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {editProduct && (
+        <EditProductDialog
+          product={editProduct}
+          onClose={() => setEditProduct(null)}
+          onSave={(updates) => {
+            onUpdateProduct(updates);
+            setEditProduct(null);
+          }}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="rounded-xl">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-right">מחיקת מוצר</AlertDialogTitle>
-            <AlertDialogDescription className="text-right">
-              למחוק את "{deleteTarget?.product_name}"? לא ניתן לבטל.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row-reverse gap-2">
-            <AlertDialogAction
-              className="bg-destructive"
-              onClick={() => {
-                if (deleteTarget) onDeleteProduct(deleteTarget.id);
-                setDeleteTarget(null);
-              }}
-            >
-              מחק
-            </AlertDialogAction>
-            <AlertDialogCancel>ביטול</AlertDialogCancel>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {deleteTarget && (
+        <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>מחק מוצר?</AlertDialogTitle>
+              <AlertDialogDescription>
+                האם אתה בטוח שברצונך למחוק את "{deleteTarget.product_name}"?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>ביטול</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => {
+                  onDeleteProduct(deleteTarget.id);
+                  setDeleteTarget(null);
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                מחק
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* Rename Department Dialog */}
+      {renameDept && (
+        <Dialog open={!!renameDept} onOpenChange={() => setRenameDept(null)}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>שנה שם מחלקה</DialogTitle>
+            </DialogHeader>
+            <Input
+              placeholder="שם חדש"
+              defaultValue={renameDept.oldName}
+              onChange={(e) =>
+                setRenameDept({
+                  ...renameDept,
+                  newName: e.target.value,
+                })
+              }
+            />
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => setRenameDept(null)}
+              >
+                ביטול
+              </Button>
+              <Button
+                onClick={() => {
+                  if (renameDept.newName.trim()) {
+                    onRenameDepartment(renameDept.oldName, renameDept.newName);
+                    setRenameDept(null);
+                  }
+                }}
+              >
+                שנה
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
