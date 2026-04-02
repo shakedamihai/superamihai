@@ -1,8 +1,9 @@
-import { GripVertical, Pencil, Trash2 } from "lucide-react";
+import { GripVertical, Pencil, Trash2, Plus, Minus } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { isLactoseFree } from "@/hooks/useDepartments";
+import { Button } from "./ui/button";
 
 interface SortableProductRowProps {
   product: Product;
@@ -34,7 +35,7 @@ export function SortableProductRow({
 
   const lactoseFree = isLactoseFree(product.product_name);
 
-  // לוגיקת עיבוד היחידות למלאי
+  // לוגיקת עיבוד היחידות
   let baseUnitDisplay = product.unit?.includes("קילו") ? "ק\"ג" : (product.unit || "יחידות");
   if (product.base_quantity === 1 && (baseUnitDisplay === "יחידות" || !product.unit)) {
     baseUnitDisplay = "יחידה";
@@ -48,7 +49,7 @@ export function SortableProductRow({
         lactoseFree ? "border-sky-100 bg-sky-50/20" : ""
       }`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3 flex-1">
         <button
           {...attributes}
           {...listeners}
@@ -56,13 +57,14 @@ export function SortableProductRow({
         >
           <GripVertical className="h-4 w-4" />
         </button>
-        <div className="flex flex-col text-right">
+        
+        <div className="flex flex-col text-right flex-1">
           <span className="font-bold text-foreground">
             {product.product_name}
           </span>
           <div className="flex items-center gap-2 mt-0.5">
             <span className="text-xs text-muted-foreground">
-              מלאי: {product.current_stock} / {product.base_quantity} {baseUnitDisplay}
+              {product.current_stock} / {product.base_quantity} {baseUnitDisplay}
             </span>
             {lactoseFree && (
               <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">
@@ -76,6 +78,31 @@ export function SortableProductRow({
             )}
           </div>
         </div>
+      </div>
+
+      {/* כפתורי הפלוס והמינוס שחזרו למקומם */}
+      <div className="flex items-center gap-2 px-2 border-x border-slate-100 mx-2">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-full border-slate-200"
+          onClick={() => onUpdateStock(product.id, Math.max(0, product.current_stock - 1))}
+        >
+          <Minus className="h-3 w-3" />
+        </Button>
+        
+        <span className="w-4 text-center font-black text-sm text-slate-700">
+          {product.current_stock}
+        </span>
+
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 rounded-full border-slate-200 bg-slate-50"
+          onClick={() => onUpdateStock(product.id, product.current_stock + 1)}
+        >
+          <Plus className="h-3 w-3" />
+        </Button>
       </div>
 
       <div className="flex items-center gap-1">
