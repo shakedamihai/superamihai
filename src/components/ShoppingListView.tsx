@@ -34,6 +34,7 @@ interface ShoppingListViewProps {
   isFinishing: boolean;
 }
 
+// מאגר צבעים - מסונכרן עם המלאי
 const COLORS = [
   { borderClass: 'border-r-red-500', iconClass: 'text-red-500' },
   { borderClass: 'border-r-green-500', iconClass: 'text-green-500' },
@@ -45,16 +46,6 @@ const COLORS = [
   { borderClass: 'border-r-amber-500', iconClass: 'text-amber-500' },
   { borderClass: 'border-r-indigo-500', iconClass: 'text-indigo-500' },
   { borderClass: 'border-r-teal-500', iconClass: 'text-teal-500' },
-  { borderClass: 'border-r-fuchsia-500', iconClass: 'text-fuchsia-500' },
-  { borderClass: 'border-r-lime-500', iconClass: 'text-lime-500' },
-  { borderClass: 'border-r-sky-500', iconClass: 'text-sky-500' },
-  { borderClass: 'border-r-rose-500', iconClass: 'text-rose-500' },
-  { borderClass: 'border-r-emerald-500', iconClass: 'text-emerald-500' },
-  { borderClass: 'border-r-violet-500', iconClass: 'text-violet-500' },
-  { borderClass: 'border-r-yellow-500', iconClass: 'text-yellow-500' },
-  { borderClass: 'border-r-stone-500', iconClass: 'text-stone-500' },
-  { borderClass: 'border-r-slate-500', iconClass: 'text-slate-500' },
-  { borderClass: 'border-r-zinc-500', iconClass: 'text-zinc-500' },
 ];
 
 const getDeptIcon = (name: string) => {
@@ -80,10 +71,12 @@ export function ShoppingListView({
   onDeleteProduct,
   isFinishing,
 }: ShoppingListViewProps) {
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [openDepts, setOpenDepts] = useState<Record<string, boolean>>(() =>
     Object.keys(shoppingByDepartment).reduce((acc, d) => ({ ...acc, [d]: true }), {})
   );
+  
   const [checked, setChecked] = useState<Set<string>>(new Set());
 
   const toggleChecked = (id: string) => {
@@ -101,11 +94,9 @@ export function ShoppingListView({
     const mapping: Record<string, typeof COLORS[0]> = {};
     const usedIndices = new Set<number>();
     const preferences = [
-      { keys: ['ירק'], idx: 1 }, { keys: ['פיר'], idx: 14 },
+      { keys: ['ירק'], idx: 1 }, { keys: ['פיר'], idx: 6 },
       { keys: ['חלב', 'גבינ', 'מקרר'], idx: 2 }, { keys: ['בשר', 'עוף', 'קצביה'], idx: 0 }, 
-      { keys: ['דג'], idx: 5 }, { keys: ['קפוא'], idx: 12 }, 
-      { keys: ['פארם', 'נקיון', 'סבון'], idx: 4 }, { keys: ['מאפי', 'לחם'], idx: 7 }, 
-      { keys: ['שתי', 'משק'], idx: 8 }, { keys: ['תינוק'], idx: 10 }, 
+      { keys: ['דג'], idx: 5 }, { keys: ['פארם'], idx: 4 }, 
     ];
 
     deptKeys.forEach((dept) => {
@@ -122,22 +113,16 @@ export function ShoppingListView({
     deptKeys.forEach((dept) => {
       if (!mapping[dept]) {
         const availableIndex = COLORS.findIndex((_, i) => !usedIndices.has(i));
-        if (availableIndex !== -1) {
-          mapping[dept] = COLORS[availableIndex];
-          usedIndices.add(availableIndex);
-        } else {
-          mapping[dept] = COLORS[Math.abs(dept.length) % COLORS.length];
-        }
+        mapping[dept] = availableIndex !== -1 ? COLORS[availableIndex] : COLORS[0];
+        if (availableIndex !== -1) usedIndices.add(availableIndex);
       }
     });
     return mapping;
   }, [deptKeys]);
 
-  const checkedCount = checked.size;
-  const totalCount = shoppingList.length;
   const isSearching = searchQuery.length > 0;
   const lowerQuery = searchQuery.toLowerCase();
-
+  
   const filteredDepts = useMemo(() => {
     if (!searchQuery) return deptKeys;
     return deptKeys.filter(dept => {
@@ -149,145 +134,134 @@ export function ShoppingListView({
 
   if (shoppingList.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 animate-slide-in">
-        <div className="bg-white p-8 rounded-3xl border border-dashed shadow-sm flex flex-col items-center text-center font-sans">
-          <CheckCircle2 className="h-12 w-12 text-primary/40 mb-4" />
-          <p className="text-xl font-bold text-foreground">הכל במלאי! 🎉</p>
-          <p className="text-muted-foreground mt-1">אין מוצרים שחסרים כרגע במזווה</p>
+      <div className="flex flex-col items-center justify-center py-20">
+        <div className="bg-white p-8 rounded-3xl border border-dashed shadow-sm flex flex-col items-center">
+          <CheckCircle2 className="h-12 w-12 text-primary/30 mb-4" />
+          <p className="text-xl font-bold">הכל במלאי! 🎉</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="animate-slide-in pb-24 bg-slate-50 min-h-screen font-sans">
+    <div className="space-y-6 pb-24 bg-slate-50 min-h-screen pt-4 px-2">
       
-      {/* --- אזור הניהול (Light Dashboard) - כבר לא Sticky --- */}
-      <div className="pt-4 px-2 pb-2">
-        <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ease-in-out ${
+      {/* --- אזור הניהול הבהיר (לא Sticky) --- */}
+      <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${
           isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'
-        }`}>
-          
-          <div className="space-y-4 relative z-10">
-            {/* שורת חיפוש בהירה */}
-            <div className="relative w-full">
-              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
-                <Search className="h-5 w-5 text-slate-400" />
-              </div>
-              <Input
-                type="text"
-                placeholder="חיפוש מהיר..."
-                className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 text-lg focus-visible:ring-2 focus-visible:ring-indigo-100"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {isSearching && (
-                <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400 hover:text-slate-600">
-                  <X className="h-5 w-5" />
-                </button>
-              )}
+      }`}>
+        <div className="space-y-4">
+          <div className="relative w-full">
+            <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none">
+              <Search className="h-5 w-5 text-slate-400" />
             </div>
-
-            {/* התקדמות וכפתורים - נעלמים בחיפוש */}
-            {!isSearching && (
-              <div className="space-y-5 animate-in fade-in duration-300">
-                <div className="space-y-2 px-1">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase tracking-wider">
-                    <span>התקדמות קנייה</span>
-                    <span className="bg-slate-100 text-slate-700 px-2.5 py-0.5 rounded-full">{checkedCount}/{totalCount}</span>
-                  </div>
-                  <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                    <div className="h-full bg-gradient-to-r from-emerald-400 to-teal-400 transition-all duration-700 ease-out rounded-full" style={{ width: `${(checkedCount / totalCount) * 100}%` }} />
-                  </div>
-                </div>
-                <div className="flex gap-3">
-                  <Button onClick={onCopyList} variant="outline" className="flex-1 gap-2 rounded-xl h-12 border-slate-200 hover:bg-slate-50 text-slate-700 font-bold">
-                    <Copy className="h-4 w-4" /> העתק
-                  </Button>
-                  <AlertDialog>
-                    <AlertDialogTrigger asChild>
-                      <Button variant="default" className="flex-1 gap-2 rounded-xl h-12 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm font-bold" disabled={isFinishing || checkedCount === 0}>
-                        <CheckCircle2 className="h-4 w-4" /> סיום
-                      </Button>
-                    </AlertDialogTrigger>
-                    <AlertDialogContent className="rounded-3xl p-6 font-sans">
-                      <AlertDialogHeader>
-                        <AlertDialogTitle className="text-right text-xl">סיימת לקנות?</AlertDialogTitle>
-                        <AlertDialogDescription className="text-right text-base mt-2 font-medium">המערכת תמלא את המלאי עבור {checkedCount} הפריטים שסימנת.</AlertDialogDescription>
-                      </AlertDialogHeader>
-                      <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
-                        <AlertDialogAction className="rounded-xl px-6 py-5 text-md bg-indigo-600 hover:bg-indigo-700 font-bold" onClick={() => { onFinishChecked(checked); setChecked(new Set()); }}>עדכן מלאי</AlertDialogAction>
-                        <AlertDialogCancel className="rounded-xl px-6 py-5 text-md font-medium">ביטול</AlertDialogCancel>
-                      </AlertDialogFooter>
-                    </AlertDialogContent>
-                  </AlertDialog>
-                </div>
-              </div>
+            <Input
+              type="text"
+              placeholder="חיפוש פריט או מחלקה..."
+              className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {isSearching && (
+              <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                <X className="h-5 w-5" />
+              </button>
             )}
           </div>
+
+          {!isSearching && (
+            <div className="space-y-4 animate-in fade-in duration-300">
+              <div className="space-y-2 px-1">
+                <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase">
+                  <span>התקדמות קנייה</span>
+                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">{checked.size}/{shoppingList.length}</span>
+                </div>
+                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${(checked.size / shoppingList.length) * 100}%` }} />
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button onClick={onCopyList} variant="outline" className="flex-1 gap-2 rounded-xl h-12 border-slate-200 font-bold text-slate-700">
+                  <Copy className="h-4 w-4" /> העתק
+                </Button>
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button className="flex-1 gap-2 rounded-xl h-12 font-bold" disabled={isFinishing || checked.size === 0}>
+                      <CheckCircle2 className="h-4 w-4" /> סיום
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent className="rounded-3xl p-6">
+                    <AlertDialogHeader>
+                      <AlertDialogTitle className="text-right">סיימת לקנות?</AlertDialogTitle>
+                      <AlertDialogDescription className="text-right">הפריטים שסומנו יעברו למלאי.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
+                      <AlertDialogAction className="rounded-xl" onClick={() => { onFinishChecked(checked); setChecked(new Set()); }}>עדכן מלאי</AlertDialogAction>
+                      <AlertDialogCancel className="rounded-xl">ביטול</AlertDialogCancel>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* --- רשימת הקניות --- */}
-      <div className="pt-2 px-2">
+      {/* --- רשימת הקניות (העיצוב המקורי והאהוב) --- */}
+      <div>
         {!isSearching && (
-          <div className="flex items-center justify-between px-3 mb-5 mt-4">
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">מה לקנות?</h2>
-            <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{filteredDepts.length} קטגוריות</span>
+          <div className="flex items-center justify-between px-3 mb-4">
+            <h2 className="text-xl font-extrabold text-slate-800">מה לקנות?</h2>
           </div>
         )}
-        <div className="space-y-4">
-          {filteredDepts.length === 0 && isSearching ? (
-            <div className="text-center py-16 bg-white rounded-3xl border border-dashed shadow-sm">
-              <Search className="h-12 w-12 mx-auto mb-3 text-slate-200" />
-              <p className="text-slate-400 font-bold">לא מצאתי פריט כזה...</p>
-            </div>
-          ) : (
-            filteredDepts.map((dept) => {
-              const items = shoppingByDepartment[dept];
-              const matchesDeptName = dept.toLowerCase().includes(lowerQuery);
-              const displayItems = isSearching ? (matchesDeptName ? items : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))) : items;
-              const Icon = getDeptIcon(dept);
-              const { borderClass, iconClass } = deptColors[dept] || COLORS[0];
 
-              return (
-                <Collapsible key={dept} open={isSearching ? true : (openDepts[dept] !== false)} onOpenChange={(open) => setOpenDepts((prev) => ({ ...prev, [dept]: open }))} className={`bg-white rounded-[1.5rem] shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-slate-100 overflow-hidden border-r-8 ${borderClass}`}>
-                  <CollapsibleTrigger className="w-full flex items-center justify-between px-5 py-5 bg-transparent font-black text-slate-800">
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2 rounded-lg bg-slate-50 ${iconClass}`}><Icon className="h-5 w-5" /></div>
-                      <span className="text-[1.1rem] tracking-tight">{dept}</span>
-                      <span className="ml-2 px-2.5 py-0.5 bg-slate-100 text-slate-500 rounded-full text-[10px] font-black">{displayItems.length}</span>
-                    </div>
-                    <ChevronDown className={`h-5 w-5 text-slate-300 transition-transform duration-500 ${openDepts[dept] !== false || isSearching ? "rotate-180" : ""}`} />
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="px-4 pb-4 space-y-3 mt-1">
-                    <div className="space-y-2.5 border-t border-slate-50 pt-4">
-                      {displayItems.map((p) => {
-                        const isChecked = checked.has(p.id);
-                        const lactoseFree = isLactoseFree(p.product_name);
-                        return (
-                          <div key={p.id} onClick={() => toggleChecked(p.id)} className={`group flex items-center justify-between rounded-2xl px-5 py-4 border-2 cursor-pointer transition-all duration-300 ${isChecked ? "bg-slate-50 border-transparent opacity-40 scale-[0.98]" : "bg-white border-slate-50 shadow-sm"}`}>
-                            <div className="flex items-center gap-5">
-                              <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-all duration-500 ${isChecked ? "bg-indigo-500 border-indigo-500 text-white" : "bg-white border-slate-200"}`}>{isChecked && <Check className="h-4 w-4" strokeWidth={4} />}</div>
-                              <div className="flex flex-col text-right">
-                                <span className={`text-[1.1rem] font-bold ${isChecked ? "line-through text-slate-400" : "text-slate-800"}`}>{p.product_name}</span>
-                                <div className="flex items-center gap-2 mt-1">
-                                  <span className={`text-sm font-black ${isChecked ? "text-slate-300" : "text-slate-500"}`}>{p.is_one_time ? 1 : Math.max(0, p.base_quantity - p.current_stock)} {p.unit || "יחידות"}</span>
-                                  {lactoseFree && <span className="text-[9px] bg-sky-100 text-sky-700 px-2 py-0.5 rounded-md font-black uppercase">ללא לקטוז</span>}
-                                  {p.is_one_time && <span className="text-[9px] bg-orange-100 text-orange-700 px-2 py-0.5 rounded-md font-black uppercase">חד-פעמי</span>}
-                                </div>
+        <div className="space-y-4">
+          {filteredDepts.map((dept) => {
+            const items = shoppingByDepartment[dept];
+            const displayItems = isSearching 
+              ? (dept.toLowerCase().includes(lowerQuery) ? items : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery)))
+              : items;
+
+            const Icon = getDeptIcon(dept);
+            const { borderClass, iconClass } = deptColors[dept] || COLORS[0];
+
+            return (
+              <Collapsible key={dept} open={isSearching ? true : (openDepts[dept] !== false)} onOpenChange={(open) => setOpenDepts(prev => ({ ...prev, [dept]: open }))} className={`bg-white rounded-2xl shadow-sm border border-border overflow-hidden border-r-4 ${borderClass}`}>
+                <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-4 font-bold text-foreground">
+                  <div className="flex items-center gap-3">
+                    <Icon className={`h-5 w-5 ${iconClass}`} />
+                    <span>{dept}</span>
+                    <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{displayItems.length}</span>
+                  </div>
+                  <ChevronDown className={`h-5 w-5 text-slate-300 transition-transform ${openDepts[dept] !== false || isSearching ? "rotate-180" : ""}`} />
+                </CollapsibleTrigger>
+                <CollapsibleContent className="px-3 pb-3 space-y-2 mt-1">
+                  <div className="space-y-2 border-t border-border/50 pt-3">
+                    {displayItems.map((p) => {
+                      const isChecked = checked.has(p.id);
+                      const lactoseFree = isLactoseFree(p.product_name);
+                      return (
+                        <div key={p.id} onClick={() => toggleChecked(p.id)} className={`group flex items-center justify-between rounded-xl px-4 py-3.5 border cursor-pointer transition-all ${isChecked ? "bg-muted/40 opacity-50" : lactoseFree ? "bg-sky-50/40 border-sky-100" : "bg-white border-gray-100"}`}>
+                          <div className="flex items-center gap-4">
+                            <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition-all ${isChecked ? "bg-primary border-primary text-white" : "bg-white border-muted-foreground/30"}`}>{isChecked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}</div>
+                            <div className="flex flex-col text-right">
+                              <span className={`text-[1.05rem] font-medium ${isChecked ? "line-through text-muted-foreground" : "text-foreground"}`}>{p.product_name}</span>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className={`text-sm ${isChecked ? "text-muted-foreground" : "text-primary font-bold"}`}>{p.is_one_time ? 1 : Math.max(0, p.base_quantity - p.current_stock)} {p.unit || "יחידות"}</span>
+                                {lactoseFree && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">ללא לקטוז</span>}
+                                {p.is_one_time && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">חד-פעמי</span>}
                               </div>
                             </div>
-                            {p.is_one_time && <button onClick={(e) => { e.stopPropagation(); onDeleteProduct(p.id); }} className="text-slate-200 hover:text-red-500 p-2.5 transition-colors"><Trash2 className="h-5 w-5" /></button>}
                           </div>
-                        );
-                      })}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              );
-            })
-          )}
+                          {p.is_one_time && <button onClick={(e) => { e.stopPropagation(); onDeleteProduct(p.id); }} className="text-muted-foreground/40 p-2"><Trash2 className="h-4 w-4" /></button>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            );
+          })}
         </div>
       </div>
     </div>
