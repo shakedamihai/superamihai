@@ -73,13 +73,16 @@ export function useDepartments() {
     },
   });
 
+  // תוקן: שימוש בשם ייחודי לערוץ ההאזנה כדי למנוע קריסה (שגיאת ה-postgres_changes)
   useEffect(() => {
+    const uniqueChannelName = `departments-realtime-${Math.random().toString(36).substring(7)}`;
     const channel = supabase
-      .channel("departments-realtime")
+      .channel(uniqueChannelName)
       .on("postgres_changes", { event: "*", schema: "public", table: "departments" }, () => {
         queryClient.invalidateQueries({ queryKey: ["departments"] });
       })
       .subscribe();
+      
     return () => {
       supabase.removeChannel(channel);
     };
@@ -146,7 +149,6 @@ export function useDepartments() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments"] }),
   });
 
-  // הנה הפונקציה החסרה שגרמה למסך הלבן!
   const renameDepartment = useMutation({
     mutationFn: async ({ oldName, newName }: { oldName: string; newName: string }) => {
       const { error: deptErr } = await supabase.from("departments").update({ name: newName }).eq("name", oldName);
@@ -177,7 +179,6 @@ export function useDepartments() {
     isLoading,
     syncStandardDepartments,
     addDepartment,
-    renameDepartment, // הוחזר!
-    reorderDepartments,
+    renameDepartment,
   };
 }
