@@ -57,8 +57,7 @@ interface ShoppingListViewProps {
   onCopyList: () => void;
   onFinishChecked: (checkedIds: Set<string>) => void;
   onDeleteProduct: (id: string) => void;
-  onUpdateProduct?: (updates: { id: string; current_stock?: number }) => void; // תמיכה במחיקה עתידית
-  onUpdateStock: (id: string, stock: number) => void; // שמירה על הפרופ הקיים לתאימות
+  onUpdateStock: (id: string, stock: number) => void;
   isFinishing: boolean;
 }
 
@@ -69,10 +68,9 @@ export function ShoppingListView({
   onFinishChecked,
   onDeleteProduct,
   onUpdateStock,
-  onUpdateProduct,
   isFinishing,
 }: ShoppingListViewProps) {
-  const { departments } = useDepartments(); // משיכת סדר המחלקות ישירות מהמסד הנתונים
+  const { departments } = useDepartments(); // שואב את סדר המחלקות מהמזווה
   const [searchQuery, setSearchQuery] = useState("");
   const [openDepts, setOpenDepts] = useState<Record<string, boolean>>(() =>
     Object.keys(shoppingByDepartment).reduce((acc, d) => ({ ...acc, [d]: true }), {})
@@ -88,16 +86,12 @@ export function ShoppingListView({
     if (deleteTarget.is_one_time) {
       onDeleteProduct(deleteTarget.id);
     } else {
-      if (onUpdateProduct) {
-        onUpdateProduct({ id: deleteTarget.id, current_stock: deleteTarget.base_quantity });
-      } else {
-        onUpdateStock(deleteTarget.id, deleteTarget.base_quantity);
-      }
+      onUpdateStock(deleteTarget.id, deleteTarget.base_quantity);
     }
     setDeleteTarget(null);
   };
 
-  // מיון המחלקות בדיוק לפי הסדר שמוגדר במזווה (departments.sort_order)
+  // מיון לפי הסדר המדויק של המחלקות במזווה
   const filteredDepts = useMemo(() => {
     const keys = Object.keys(shoppingByDepartment);
     
@@ -168,7 +162,7 @@ export function ShoppingListView({
                     </AlertDialogHeader>
                     <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
                       <AlertDialogAction className="rounded-xl px-6 py-5 bg-indigo-600 text-white font-bold" onClick={() => { onFinishChecked(checked); setChecked(new Set()); }}>עדכן מלאי</AlertDialogAction>
-                      <AlertDialogCancel className="rounded-xl px-6 py-5 border-slate-200">ביטול</AlertDialogCancel>
+                      <AlertDialogCancel className="rounded-xl px-6 py-5 border-slate-200 font-medium">ביטול</AlertDialogCancel>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -178,7 +172,7 @@ export function ShoppingListView({
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="flex flex-col gap-4">
         {filteredDepts.map((deptName) => {
           const items = shoppingByDepartment[deptName];
           const displayItems = isSearching ? (deptName.toLowerCase().includes(lowerQuery) ? items : items.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))) : items;
@@ -196,8 +190,8 @@ export function ShoppingListView({
                 </div>
                 <ChevronDown className={`h-5 w-5 text-slate-300 transition-transform ${openDepts[deptName] !== false || isSearching ? "rotate-180" : ""}`} />
               </CollapsibleTrigger>
-              <CollapsibleContent className="px-3 pb-3 space-y-2">
-                <div className="space-y-2 border-t border-border/50 pt-3">
+              <CollapsibleContent className="px-3 pb-3">
+                <div className="flex flex-col gap-2 border-t border-border/50 pt-3">
                   {displayItems.map((p) => {
                     const isChecked = checked.has(p.id);
                     const lactoseFree = isLactoseFree(p.product_name);
