@@ -19,6 +19,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogFooter,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -40,7 +49,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { SortableProductRow } from "./SortableProductRow";
 
-// --- רשימת היחידות המוגנות (יחידות מערכת שלא ניתן למחוק/לערוך) ---
 const SYSTEM_UNITS = [
   "יחידות", 'ק"ג', "ליטר", "חבילות", "מארזים", 
   "בקבוקים", "פחיות", "גלילים", "שפופרות", 
@@ -91,24 +99,11 @@ function SortableDepartmentItem({ dept, disabled, children }: { dept: Department
     id: `dept-${dept.id}`,
     disabled: disabled
   });
-  
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition: transition || 'transform 150ms cubic-bezier(0.25, 1, 0.5, 1)',
-    opacity: isDragging ? 0.8 : 1,
-    zIndex: isDragging ? 50 : undefined,
-  };
-
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.8 : 1, zIndex: isDragging ? 50 : undefined };
   return (
     <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center mb-5 transition-transform">
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
-        <button
-          {...attributes}
-          {...listeners}
-          className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 touch-none focus:outline-none shadow-sm"
-        >
-          <GripVertical className="h-5 w-5 opacity-50" />
-        </button>
+        <button {...attributes} {...listeners} className="w-10 h-[60px] flex items-center justify-center bg-white border rounded-2xl text-muted-foreground shrink-0 touch-none shadow-sm"><GripVertical className="h-5 w-5 opacity-50" /></button>
         <div className="flex-1 overflow-hidden">{children}</div>
       </div>
     </div>
@@ -130,20 +125,17 @@ export function PantryCheckView({
   const [searchQuery, setSearchQuery] = useState("");
   const [openDepts, setOpenDepts] = useState<Record<string, boolean>>({});
   const [editProduct, setEditProduct] = useState<Product | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Product | null>(null); // State למחיקה
   const [manageUnitsOpen, setManageUnitsOpen] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isReordering, setIsReordering] = useState(false);
   const reorderTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  // הגדרת משתנה החיפוש שהיה חסר וגרם לשגיאה
   const isSearching = searchQuery.length > 0;
 
-  // סריקת יחידות קיימות
   const allUsedUnits = useMemo(() => {
     const units = new Set<string>(SYSTEM_UNITS);
-    Object.values(productsByDepartment).flat().forEach(p => {
-      if (p.unit) units.add(p.unit);
-    });
+    Object.values(productsByDepartment).flat().forEach(p => { if (p.unit) units.add(p.unit); });
     return Array.from(units).sort((a, b) => {
       const aIsSys = SYSTEM_UNITS.includes(a);
       const bIsSys = SYSTEM_UNITS.includes(b);
@@ -162,9 +154,7 @@ export function PantryCheckView({
   }, [productsByDepartment]);
 
   const baseSortedDepts = useMemo(() => {
-    return [...(departments || [])]
-      .filter((d) => baseRecurringByDept[d.name])
-      .sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+    return [...(departments || [])].filter((d) => baseRecurringByDept[d.name]).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   }, [departments, baseRecurringByDept]);
 
   const [localDepts, setLocalDepts] = useState<Department[]>(baseSortedDepts);
@@ -197,10 +187,7 @@ export function PantryCheckView({
     return mapping;
   }, [baseSortedDepts]);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } })
-  );
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 10 } }));
 
   const handleDragStart = (event: DragStartEvent) => { setActiveId(event.active.id as string); };
 
@@ -208,11 +195,9 @@ export function PantryCheckView({
     setActiveId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
-
     setIsReordering(true);
     if (reorderTimeout.current) clearTimeout(reorderTimeout.current);
     reorderTimeout.current = setTimeout(() => setIsReordering(false), 2000);
-
     const activeStr = String(active.id);
     const overStr = String(over.id);
 
@@ -273,27 +258,14 @@ export function PantryCheckView({
   return (
     <div className="w-full flex flex-col items-center py-4 min-h-screen bg-slate-50/50 font-sans">
       <div className="w-full max-w-[calc(100vw-32px)] space-y-6">
-        
         <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'}`}>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <div className="absolute inset-y-0 right-0 flex items-center pr-4"><Search className="h-5 w-5 text-slate-400" /></div>
-              <Input
-                placeholder="חיפוש פריט או מחלקה..."
-                className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
+              <Input placeholder="חיפוש פריט או מחלקה..." className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
               {isSearching && <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><X className="h-5 w-5" /></button>}
             </div>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-[60px] w-[60px] rounded-xl border-slate-200"
-              onClick={() => setManageUnitsOpen(true)}
-            >
-              <Settings2 className="h-6 w-6 text-slate-500" />
-            </Button>
+            <Button variant="outline" size="icon" className="h-[60px] w-[60px] rounded-xl border-slate-200" onClick={() => setManageUnitsOpen(true)}><Settings2 className="h-6 w-6 text-slate-500" /></Button>
           </div>
         </div>
 
@@ -320,7 +292,13 @@ export function PantryCheckView({
                       <SortableContext items={displayItems.map(p => p.id)} strategy={verticalListSortingStrategy}>
                         <div className="space-y-2 border-t border-slate-50 pt-3">
                           {displayItems.map((p) => (
-                            <SortableProductRow key={p.id} product={p} onEdit={() => setEditProduct(p)} onDelete={() => {}} onUpdateStock={onUpdateStock} />
+                            <SortableProductRow 
+                              key={p.id} 
+                              product={p} 
+                              onEdit={() => setEditProduct(p)} 
+                              onDelete={() => setDeleteTarget(p)} // הנה התיקון! מעביר את המוצר למחיקה
+                              onUpdateStock={onUpdateStock} 
+                            />
                           ))}
                         </div>
                       </SortableContext>
@@ -338,13 +316,7 @@ export function PantryCheckView({
           <DialogHeader><DialogTitle className="text-right text-xl font-black">ניהול יחידות מידה</DialogTitle></DialogHeader>
           <div className="py-4 space-y-3 max-h-[60vh] overflow-y-auto pr-1">
             {allUsedUnits.map((unit) => (
-              <UnitRow 
-                key={unit} 
-                unit={unit} 
-                isSystem={SYSTEM_UNITS.includes(unit)}
-                onRename={handleUpdateUnit} 
-                onDelete={() => handleDeleteUnit(unit)} 
-              />
+              <UnitRow key={unit} unit={unit} isSystem={SYSTEM_UNITS.includes(unit)} onRename={handleUpdateUnit} onDelete={() => handleDeleteUnit(unit)} />
             ))}
           </div>
           <DialogFooter><Button className="w-full rounded-xl py-6 font-bold" onClick={() => setManageUnitsOpen(false)}>סיום</Button></DialogFooter>
@@ -352,6 +324,21 @@ export function PantryCheckView({
       </Dialog>
 
       <EditProductDialog product={editProduct} open={!!editProduct} onClose={() => setEditProduct(null)} onSave={onUpdateProduct} departmentNames={departmentNames} onAddDepartment={onAddDepartment} />
+      
+      {/* דיאלוג מחיקה למלאי */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent className="rounded-3xl p-6 font-sans">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-right text-xl">למחוק את המוצר?</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
+            <AlertDialogAction className="rounded-xl px-6 py-5 bg-red-500 hover:bg-red-600 text-white font-bold" onClick={() => { if (deleteTarget) onDeleteProduct(deleteTarget.id); setDeleteTarget(null); }}>
+              מחק מוצר
+            </AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl px-6 py-5 font-medium">ביטול</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
