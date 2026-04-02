@@ -3,10 +3,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Zap, Minus, RefreshCw } from "lucide-react";
+import { Plus, Zap, Minus } from "lucide-react";
 import { DepartmentCombobox } from "./DepartmentCombobox";
 import { UnitCombobox } from "./UnitCombobox";
-import { autoCategorize, useDepartments } from "@/hooks/useDepartments";
+import { autoCategorize } from "@/hooks/useDepartments";
 
 interface AddProductViewProps {
   onAdd: (product: {
@@ -23,14 +23,13 @@ interface AddProductViewProps {
 }
 
 export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartment }: AddProductViewProps) {
-  const { syncStandardDepartments } = useDepartments();
   const [name, setName] = useState("");
   const [department, setDepartment] = useState<string>(departmentNames[0] || "כללי");
   const [unit, setUnit] = useState("יחידות");
   const [baseQty, setBaseQty] = useState(1);
   const [isOneTime, setIsOneTime] = useState(false);
   
-  // משתני הוספה מהירה - שינינו פה שיוכל לקבל גם טקסט בזמן הקלדה
+  // משתני הוספה מהירה
   const [quickName, setQuickName] = useState("");
   const [quickQty, setQuickQty] = useState<number | string>(1);
   
@@ -95,23 +94,10 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
 
   return (
     <div className="space-y-6 animate-slide-in font-sans">
-      <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 flex items-center justify-between">
-        <span className="text-indigo-900 text-sm font-medium">רוצה לסנכרן את כל המחלקות החדשות?</span>
-        <Button 
-          size="sm" 
-          onClick={() => syncStandardDepartments.mutate()} 
-          disabled={syncStandardDepartments.isPending}
-          className="bg-white border-indigo-200 text-indigo-600 hover:bg-indigo-100 rounded-xl gap-2 shadow-sm"
-        >
-          <RefreshCw className={`h-4 w-4 ${syncStandardDepartments.isPending ? 'animate-spin' : ''}`} /> 
-          סנכרן
-        </Button>
-      </div>
-
-      <div className="bg-white rounded-[1.5rem] border border-slate-200 p-6 shadow-sm">
+      <div className="bg-white rounded-[1.5rem] border border-slate-200 p-6 shadow-sm mt-2">
         <div className="flex items-center gap-2 mb-4">
           <div className="p-1.5 bg-amber-50 rounded-lg"><Zap className="h-4 w-4 text-amber-500 fill-amber-500" /></div>
-          <h3 className="font-bold text-slate-800">הוספה מהירה (מוצרים לאירוח / חד-פעמיים)</h3>
+          <h3 className="font-bold text-slate-800">מוצרים חד פעמיים</h3>
         </div>
         <form onSubmit={handleQuickAdd} className="flex gap-2 items-center">
           <Input 
