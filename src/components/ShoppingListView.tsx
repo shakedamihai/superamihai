@@ -28,6 +28,7 @@ import {
 interface ShoppingListViewProps {
   shoppingByDepartment: Record<string, Product[]>;
   shoppingList: Product[];
+  departmentOrder: string[];
   onCopyList: () => void;
   onFinishChecked: (checkedIds: Set<string>) => void;
   onDeleteProduct: (id: string) => void;
