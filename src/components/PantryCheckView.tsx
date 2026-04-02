@@ -1,4 +1,4 @@
-import { ChevronDown, Pencil, GripVertical } from "lucide-react";
+import { ChevronDown, Pencil, GripVertical, Search } from "lucide-react";
 import { Product, getDepartmentColor } from "@/hooks/useProducts";
 import { Department } from "@/hooks/useDepartments";
 import {
@@ -73,7 +73,6 @@ function SortableDepartmentItem({ dept, disabled, children }: { dept: Department
   };
 
   return (
-    // הוספנו ID ייחודי כדי שנוכל לגלול אליו!
     <div id={`dept-wrapper-${dept.id}`} ref={setNodeRef} style={style} className="w-full flex justify-center mb-4">
       <div className="w-full max-w-[calc(100vw-32px)] flex items-start gap-2">
         <button
@@ -103,6 +102,9 @@ export function PantryCheckView({
   onAddDepartment,
 }: PantryCheckViewProps) {
   
+  // הוספת סטייט לחיפוש
+  const [searchQuery, setSearchQuery] = useState("");
+
   const baseRecurringByDept = useMemo(() => {
     return Object.entries(productsByDepartment || {}).reduce((acc, [dept, items]) => {
       const recurring = (items || []).filter((p) => !p.is_one_time);
@@ -160,7 +162,6 @@ export function PantryCheckView({
       setIsReordering(false);
     }, 2000);
 
-    // 1. הזזת מחלקה
     if (activeStr.startsWith("dept-") && overStr.startsWith("dept-")) {
       const activeDeptId = activeStr.replace("dept-", "");
       const overDeptId = overStr.replace("dept-", "");
@@ -176,8 +177,6 @@ export function PantryCheckView({
           onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
         } catch(e) { console.error("Reorder Dept Error", e); }
 
-        // קסם הגלילה החלקה! (Auto-Scroll)
-        // מחכים רגע שהמחלקות יפתחו חזרה, ואז גולשים למחלקה שהזזנו
         setTimeout(() => {
           const element = document.getElementById(`dept-wrapper-${activeDeptId}`);
           if (element) {
@@ -188,7 +187,6 @@ export function PantryCheckView({
       return;
     }
 
-    // 2. הזזת מוצר
     let foundDeptName: string | null = null;
     for (const [deptName, items] of Object.entries(localRecurring)) {
       if (items.some((p) => p.id === activeStr)) {
@@ -216,11 +214,39 @@ export function PantryCheckView({
   };
 
   const isDraggingDept = activeId?.startsWith("dept-") || false;
+  // ביטול גרירת מחלקה אם אנחנו גוררים מוצר או אם אנחנו באמצע חיפוש (למניעת באגים)
   const isDraggingProduct = activeId !== null && !isDraggingDept;
+  const disableDeptDrag = isDraggingProduct || searchQuery.length > 0;
+
+  // לוגיקת הסינון
+  const lowerQuery = searchQuery.toLowerCase();
+  
+  const displayDepts = useMemo(() => {
+    if (!searchQuery) return localDepts;
+    return localDepts.filter(dept => {
+      const items = localRecurring[dept.name] || [];
+      return items.some(p => p.product_name?.toLowerCase().includes(lowerQuery));
+    });
+  }, [localDepts, localRecurring, searchQuery, lowerQuery]);
 
   return (
     <div className="w-full flex flex-col items-center py-4 min-h-screen">
       <div className="w-full max-w-[calc(100vw-32px)] space-y-4">
+        
+        {/* שורת החיפוש החדשה */}
+        <div className="relative w-full">
+          <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+            <Search className="h-5 w-5 text-muted-foreground" />
+          </div>
+          <Input
+            type="text"
+            placeholder="חיפוש פריטים במלאי..."
+            className="w-full pl-3 pr-10 rounded-xl bg-card border-muted shadow-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -232,57 +258,71 @@ export function PantryCheckView({
               <div className="text-center py-12">
                 <p className="text-muted-foreground mb-4">אין מחלקות עדיין</p>
               </div>
+            ) : displayDepts.length === 0 && searchQuery ? (
+              <div className="text-center py-12">
+                <p className="text-muted-foreground text-lg">לא נמצאו מוצרים תואמים לחיפוש 🔍</p>
+              </div>
             ) : (
               <SortableContext
-                items={localDepts.map((d) => `dept-${d.id}`)}
+                items={displayDepts.map((d) => `dept-${d.id}`)}
                 strategy={verticalListSortingStrategy}
               >
-                {localDepts.map((dept) => (
-                  <SortableDepartmentItem key={dept.id} dept={dept} disabled={isDraggingProduct}>
-                    <Collapsible
-                      open={isDraggingDept ? false : (openDepts[dept.name] !== false)}
-                      onOpenChange={(open) =>
-                        setOpenDepts({ ...openDepts, [dept.name]: open })
-                      }
-                    >
-                      <div className="flex items-center gap-2">
-                        <CollapsibleTrigger
-                          className={`flex-1 flex items-center justify-between px-4 py-3 rounded-lg border font-bold ${getDepartmentColor(dept.name)}`}
-                        >
-                          <span>{dept.name} ({localRecurring[dept.name]?.length || 0})</span>
-                          <ChevronDown className={`h-4 w-4 transition-transform ${openDepts[dept.name] !== false ? "rotate-180" : ""}`} />
-                        </CollapsibleTrigger>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setRenameDept({ oldName: dept.name, newName: dept.name });
-                          }}
-                          className="p-3 border rounded-lg bg-card focus:outline-none"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                      </div>
-                      <CollapsibleContent className="mt-2 space-y-2 pb-4">
-                        <SortableContext
-                          items={localRecurring[dept.name]?.map((p) => p.id) || []}
-                          strategy={verticalListSortingStrategy}
-                        >
-                          <div className="space-y-2">
-                            {localRecurring[dept.name]?.map((product) => (
-                              <SortableProductRow
-                                key={product.id}
-                                product={product}
-                                onEdit={() => setEditProduct(product)}
-                                onDelete={() => setDeleteTarget(product)}
-                                onUpdateStock={onUpdateStock}
-                              />
-                            ))}
-                          </div>
-                        </SortableContext>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </SortableDepartmentItem>
-                ))}
+                {displayDepts.map((dept) => {
+                  
+                  // סינון הפריטים בתוך המחלקה
+                  const deptItems = localRecurring[dept.name] || [];
+                  const displayItems = searchQuery
+                    ? deptItems.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))
+                    : deptItems;
+
+                  return (
+                    <SortableDepartmentItem key={dept.id} dept={dept} disabled={disableDeptDrag}>
+                      <Collapsible
+                        // אם יש חיפוש -> נפתח אוטומטית. אם גוררים מחלקה -> נסגר.
+                        open={searchQuery ? true : (isDraggingDept ? false : (openDepts[dept.name] !== false))}
+                        onOpenChange={(open) =>
+                          setOpenDepts({ ...openDepts, [dept.name]: open })
+                        }
+                      >
+                        <div className="flex items-center gap-2">
+                          <CollapsibleTrigger
+                            className={`flex-1 flex items-center justify-between px-4 py-3 rounded-lg border font-bold ${getDepartmentColor(dept.name)}`}
+                          >
+                            <span>{dept.name} ({displayItems.length})</span>
+                            <ChevronDown className={`h-4 w-4 transition-transform ${openDepts[dept.name] !== false || searchQuery ? "rotate-180" : ""}`} />
+                          </CollapsibleTrigger>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRenameDept({ oldName: dept.name, newName: dept.name });
+                            }}
+                            className="p-3 border rounded-lg bg-card focus:outline-none"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <CollapsibleContent className="mt-2 space-y-2 pb-4">
+                          <SortableContext
+                            items={displayItems.map((p) => p.id)}
+                            strategy={verticalListSortingStrategy}
+                          >
+                            <div className="space-y-2">
+                              {displayItems.map((product) => (
+                                <SortableProductRow
+                                  key={product.id}
+                                  product={product}
+                                  onEdit={() => setEditProduct(product)}
+                                  onDelete={() => setDeleteTarget(product)}
+                                  onUpdateStock={onUpdateStock}
+                                />
+                              ))}
+                            </div>
+                          </SortableContext>
+                        </CollapsibleContent>
+                      </Collapsible>
+                    </SortableDepartmentItem>
+                  );
+                })}
               </SortableContext>
             )}
           </div>
