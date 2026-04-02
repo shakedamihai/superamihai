@@ -9,7 +9,7 @@ export type Department = {
   created_at: string;
 };
 
-// רשימת המחלקות המומלצות והקבועות
+// רשימת המחלקות המעודכנת (כולל "כללי")
 export const STANDARD_DEPARTMENTS = [
   "ירקות", "פירות", "מוצרי חלב ומקרר", "קצביה", "דגים", "קפואים",
   "מזווה ושימורים", "תבלינים ואפייה", "מאפייה ולחם", "חטיפים ומתוקים",
@@ -29,18 +29,27 @@ export function getDepartmentUnit(dept: string): { unit: string; step: number; m
 export function autoCategorize(productName: string): string {
   const name = productName.toLowerCase();
   const keywords: Record<string, string[]> = {
-    "ירקות": ["עגבני", "מלפפון", "בצל", "תפוח אדמה", "גזר", "פלפל", "חסה", "כרוב", "ברוקולי", "קישוא", "חציל", "אבוקדו"],
-    "פירות": ["תפוח", "בננה", "תפוז", "אשכולית", "ענב", "אבטיח", "מלון", "נקטרינה", "אפרסק", "שזיף", "מנגו", "תמר"],
-    "מוצרי חלב ומקרר": ["חלב", "גבינה", "יוגורט", "קוטג'", "שמנת", "ביצים", "טופו", "חמאה", "שוקו", "יוגורט"],
-    "קצביה": ["עוף", "בשר", "כרעיים", "שוקיים", "סטייק", "נקניק", "הודו", "שניצל", "קבב", "המבורגר"],
-    "מזווה ושימורים": ["אורז", "פסטה", "ספגטי", "רסק", "תירס", "טונה", "שמן", "שימורים", "פתיתים", "עדשים"],
-    "מאפייה ולחם": ["לחם", "לחמני", "פית", "חלה", "באגט", "עוגה", "קרואסון"]
+    "ירקות": ["עגבני", "מלפפון", "בצל", "תפוח אדמה", "גזר", "פלפל", "חסה", "כרוב", "ברוקולי", "קישוא", "חציל", "אבוקדו", "פטרוזיליה", "כוסברה", "ירק"],
+    "פירות": ["תפוח", "בננה", "תפוז", "אשכולית", "ענב", "אבטיח", "מלון", "נקטרינה", "אפרסק", "שזיף", "מנגו", "תות"],
+    "מוצרי חלב ומקרר": ["חלב", "גבינה", "יוגורט", "קוטג'", "שמנת", "ביצים", "טופו", "חמאה", "שוקו", "צהובה", "מעדן", "חריף", "חומוס", "טחינה"],
+    "קצביה": ["עוף", "בשר", "כרעיים", "שוקיים", "סטייק", "נקניק", "הודו", "שניצל", "קבב", "המבורגר", "פרגיות", "בקר"],
+    "מזווה ושימורים": ["אורז", "פסטה", "ספגטי", "רסק", "תירס", "טונה", "שמן", "שימורים", "פתיתים", "עדשים", "שעועית", "קוסקוס", "גרנולה", "דגנים", "זיתים"],
+    "מאפייה ולחם": ["לחם", "לחמני", "פית", "חלה", "באגט", "עוגה", "קרואסון", "בורקס", "עוגיות"],
+    "חטיפים ומתוקים": ["שוקולד", "במבה", "ביסלי", "חטיף", "סוכריות", "וופל", "מסטיק", "קינדר", "נוטלה", "דבש"],
+    "משקאות": ["מים", "קולה", "מיץ", "בירה", "יין", "שתייה", "סודה", "נסטה", "תירוש", "ספרייט", "זירו"],
+    "תבלינים ואפייה": ["קמח", "סוכר", "מלח", "אבקת אפייה", "תמצית", "שמרים", "פירורי לחם", "תבלין", "כמון", "פפריקה", "מרק"],
+    "פארם וטואלטיקה": ["שמפו", "מברשת", "משחת", "דאודורנט", "קרם", "מגבון", "סבון גוף", "קונדישינר", "טמפון", "פד"],
+    "חומרי ניקוי": ["סבון כלים", "אקונומיק", "נייר", "שקית", "ספוג", "מגב", "מרכך", "כביסה", "ניקוי", "זבל", "אבקת כביסה", "פיירי"],
+    "חד-פעמי": ["צלחת", "כוס", "מזלג", "סכין", "מפית", "חד פעמי", "תבנית"],
+    "תינוקות": ["חיתול", "מטרנה", "סימילאק", "גרבר", "מוצץ", "בקבוק לתינוק"],
+    "פיצוחים ופירות יבשים": ["אגוז", "שקד", "תמר", "צימוק", "פיצוחים", "גרעינים", "קשיו", "פיסטוק", "בוטנים"],
+    "בריאות ואורגני": ["ללא גלוטן", "אורגני", "קוואקר", "צ'יה", "קינואה", "חלב סויה", "חלב שיבולת", "טבעוני"]
   };
 
   for (const [dept, kws] of Object.entries(keywords)) {
     if (kws.some((kw) => name.includes(kw))) return dept;
   }
-  return "כללי";
+  return "כללי"; // ברירת מחדל חזרה ל-"כללי"
 }
 
 export function isLactoseFree(productName: string): boolean {
@@ -65,28 +74,25 @@ export function useDepartments() {
 
   const syncStandardDepartments = useMutation({
     mutationFn: async () => {
-      // 1. הגדרת מיפוי שמות ישנים לחדשים
       const RENAME_MAP: Record<string, string> = {
         "מקרר": "מוצרי חלב ומקרר",
         "מוצרי יבש": "מזווה ושימורים",
         "מאפייה": "מאפייה ולחם",
         "ניקיון": "חומרי ניקוי",
         "פארם": "פארם וטואלטיקה"
+        // הסרתי את האיחוד של "כללי" לתוך "מזווה"
       };
 
-      // 2. עדכון מוצרים ומחיקת מחלקות ישנות שמוחלפות
       const { data: currentDepts } = await supabase.from("departments").select("*");
+      
       for (const dept of (currentDepts || [])) {
         if (RENAME_MAP[dept.name]) {
           const newName = RENAME_MAP[dept.name];
-          // מעביר את כל המוצרים למחלקה החדשה
           await supabase.from("products").update({ department: newName }).eq("department", dept.name);
-          // מוחק את המחלקה הישנה (היא תיווצר מחדש בשם הנכון בשלב 3 אם צריך)
           await supabase.from("departments").delete().eq("id", dept.id);
         }
       }
 
-      // 3. הוספת כל המחלקות הסטנדרטיות שחסרות
       const { data: afterUpdateDepts } = await supabase.from("departments").select("name");
       const currentNames = afterUpdateDepts?.map(d => d.name) || [];
       const toAdd = STANDARD_DEPARTMENTS.filter(name => !currentNames.includes(name));
@@ -102,7 +108,6 @@ export function useDepartments() {
         await supabase.from("departments").insert(inserts);
       }
 
-      // 4. מחיקה סופית של כל מחלקה שאינה ברשימה הסטנדרטית
       const { data: finalDepts } = await supabase.from("departments").select("*");
       const deptsToDelete = (finalDepts || []).filter(d => !STANDARD_DEPARTMENTS.includes(d.name));
       
@@ -114,28 +119,9 @@ export function useDepartments() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["departments"] });
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("סנכרון מלא הושלם: מחלקות ישנות נמחקו והמוצרים עודכנו");
+      toast.success("סנכרון הושלם: 'כללי' הוגדר כברירת מחדל.");
     },
     onError: () => toast.error("שגיאה בסנכרון מחלקות"),
-  });
-
-  const addDepartment = useMutation({
-    mutationFn: async (name: string) => {
-      const { data: maxOrderData } = await supabase.from("departments").select("sort_order").order("sort_order", { ascending: false }).limit(1);
-      const maxOrder = maxOrderData?.[0]?.sort_order ?? -1;
-      const { error } = await supabase.from("departments").insert({ name, sort_order: maxOrder + 1 });
-      if (error) throw error;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments"] }),
-  });
-
-  const reorderDepartments = useMutation({
-    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
-      for (const u of updates) {
-        await supabase.from("departments").update({ sort_order: u.sort_order }).eq("id", u.id);
-      }
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments"] }),
   });
 
   return {
@@ -143,7 +129,21 @@ export function useDepartments() {
     departmentNames: departments.map((d) => d.name),
     isLoading,
     syncStandardDepartments,
-    addDepartment,
-    reorderDepartments,
+    addDepartment: useMutation({
+      mutationFn: async (name: string) => {
+        const { data: maxOrderData } = await supabase.from("departments").select("sort_order").order("sort_order", { ascending: false }).limit(1);
+        const maxOrder = maxOrderData?.[0]?.sort_order ?? -1;
+        await supabase.from("departments").insert({ name, sort_order: maxOrder + 1 });
+      },
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments"] }),
+    }),
+    reorderDepartments: useMutation({
+      mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+        for (const u of updates) {
+          await supabase.from("departments").update({ sort_order: u.sort_order }).eq("id", u.id);
+        }
+      },
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments"] }),
+    }),
   };
 }
