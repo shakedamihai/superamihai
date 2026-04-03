@@ -86,7 +86,7 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
         isOutOfStock ? "bg-red-50/40 border-red-100" : "bg-white border-slate-100 shadow-sm"
       }`}
     >
-      <div className="flex items-center gap-2 flex-1 overflow-hidden">
+      <div className="flex items-center gap-2 flex-1">
         <div
           className="text-slate-300 hover:text-indigo-400 cursor-grab active:cursor-grabbing p-1 touch-none shrink-0"
           {...attributes}
@@ -95,8 +95,8 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
           <GripVertical className="h-5 w-5" />
         </div>
         
-        <div className="flex flex-col text-right flex-1 overflow-hidden">
-          <span className={`text-[0.95rem] font-bold truncate leading-tight ${isOutOfStock ? "text-red-700" : "text-slate-800"}`}>
+        <div className="flex flex-col text-right flex-1 min-w-0 py-0.5">
+          <span className={`text-[0.95rem] font-bold break-words whitespace-normal leading-snug ${isOutOfStock ? "text-red-700" : "text-slate-800"}`}>
             {product.product_name}
           </span>
           
@@ -137,7 +137,8 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
               <MoreVertical className="h-5 w-5" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 font-sans p-1.5 rounded-xl shadow-xl border-slate-100">
+          {/* הוקטן משמעותית (w-40) עם הגבלה חמורה יותר של רוחב המסך (max-w-[85vw]) */}
+          <DropdownMenuContent align="end" className="w-40 font-sans p-1.5 rounded-xl shadow-xl border-slate-100 max-w-[85vw] z-50">
             {!isOutOfStock && (
               <>
                 <DropdownMenuItem 
@@ -148,7 +149,7 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
                     <span>סמן כחסר</span>
                     <Ban className="h-4 w-4" />
                   </div>
-                  <span className="text-[10px] text-slate-400 text-right leading-tight">
+                  <span className="text-[10px] text-slate-400 text-right leading-tight whitespace-normal break-words w-full">
                     מאפס את המלאי ומוסיף את המוצר לרשימת הקניות
                   </span>
                 </DropdownMenuItem>
