@@ -35,20 +35,14 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
 };
 
 const formatUnit = (unit?: string) => {
-  if (!unit || unit.trim() === "") return "יחידות";
+  if (!unit || unit.trim() === "") return "יח'";
   const u = unit.toLowerCase();
   if (u.includes("קילו") || u === 'ק"ג') return 'ק"ג';
-  if (u.includes("יחיד")) return "יחידות";
-  if (u.includes("חביל")) return "חבילות";
-  if (u.includes("מארז")) return "מארזים";
-  if (u.includes("ליטר")) return "ליטרים";
-  if (u.includes("בקבוק")) return "בקבוקים";
-  if (u.includes("פחי")) return "פחיות";
-  if (u.includes("גליל")) return "גלילים";
-  if (u.includes("שפופר")) return "שפופרות";
-  if (u.includes("טבלי")) return "טבליות";
-  if (u.includes("קפסול")) return "קפסולות";
-  if (u.includes("גרם") && !u.includes("קילו")) return "גרם";
+  if (u.includes("יחיד")) return "יח'";
+  if (u.includes("חביל")) return "חב'";
+  if (u.includes("מארז")) return "מארז";
+  if (u.includes("ליטר")) return "ליטר";
+  if (u.includes("בקבוק")) return "בקבוק";
   return unit;
 };
 
@@ -104,85 +98,35 @@ export function ShoppingListView({
 
   const confirmDelete = () => {
     if (!deleteTarget) return;
-    
     deleteTarget.products.forEach(p => {
-      if (p.is_one_time) {
-        onDeleteProduct(p.id);
-      } else {
-        if (onUpdateProduct) {
-          onUpdateProduct({ id: p.id, current_stock: p.base_quantity });
-        } else {
-          onUpdateStock(p.id, p.base_quantity);
-        }
-      }
+      if (p.is_one_time) onDeleteProduct(p.id);
+      else if (onUpdateProduct) onUpdateProduct({ id: p.id, current_stock: p.base_quantity });
+      else onUpdateStock(p.id, p.base_quantity);
     });
     setDeleteTarget(null);
   };
 
-  // פונקציה לבחירת הטקסט והכפתור הנכונים להודעת המחיקה
   const getDeleteDialogContent = (target: MergedProduct | null) => {
     if (!target) return { title: "", desc: "", btn: "" };
-    
-    if (target.is_one_time_only) {
-      return {
-        title: "למחוק מהמערכת?",
-        desc: "המוצר הוא חד-פעמי ולכן יימחק לחלוטין מהמערכת.",
-        btn: "מחק מוצר"
-      };
-    }
-    
-    if (target.has_one_time_extra && !target.is_one_time_only) {
-      return {
-        title: "להסיר מרשימת הקניות?",
-        desc: "הכמות החד-פעמית תימחק מהמערכת. הכמות הקבועה של המוצר תישאר במזווה ותעודכן כקיימת במלאי.",
-        btn: "הסר חד-פעמי ועדכן מלאי"
-      };
-    }
-    
-    // מצב רגיל (רק קבוע)
-    return {
-      title: "להסיר מרשימת הקניות?",
-      desc: "המוצר יימחק מהרשימה. הכמות הקבועה של המוצר תישאר במזווה ותעודכן כקיימת במלאי.",
-      btn: "הסר מהרשימה ועדכן במלאי"
-    };
+    if (target.is_one_time_only) return { title: "למחוק מהמערכת?", desc: "המוצר הוא חד-פעמי ולכן יימחק לחלוטין.", btn: "מחק מוצר" };
+    return { title: "להסיר מהרשימה?", desc: "המוצר יוסר מרשימת הקניות ויעודכן כקיים במלאי.", btn: "הסר ועדכן מלאי" };
   };
 
   const dialogContent = getDeleteDialogContent(deleteTarget);
 
   const filteredDepts = useMemo(() => {
-    const keys = Object.keys(shoppingByDepartment);
-    keys.sort((a, b) => {
+    const keys = Object.keys(shoppingByDepartment).sort((a, b) => {
       const deptA = departments.find(d => d.name === a);
       const deptB = departments.find(d => d.name === b);
       return (deptA ? deptA.sort_order : 999) - (deptB ? deptB.sort_order : 999);
     });
-
     if (!searchQuery) return keys;
-    
-    return keys.filter(dept => {
-      const matchesDept = dept.toLowerCase().includes(lowerQuery);
-      const items = shoppingByDepartment[dept] || [];
-      return matchesDept || items.some(p => p.product_name?.toLowerCase().includes(lowerQuery));
-    });
+    return keys.filter(dept => dept.toLowerCase().includes(lowerQuery) || (shoppingByDepartment[dept] || []).some(p => p.product_name?.toLowerCase().includes(lowerQuery)));
   }, [shoppingByDepartment, searchQuery, lowerQuery, departments]);
-
-  if (shoppingList.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 bg-slate-50 min-h-screen">
-        <div className="bg-white p-8 rounded-3xl border border-dashed shadow-sm flex flex-col items-center font-sans">
-          <CheckCircle2 className="h-12 w-12 text-primary/30 mb-4" />
-          <p className="text-xl font-bold">הכל במלאי! 🎉</p>
-        </div>
-      </div>
-    );
-  }
 
   const totalMergedItems = useMemo(() => {
     let count = 0;
-    Object.values(shoppingByDepartment).forEach(items => {
-      const names = new Set(items.map(i => i.product_name.trim().toLowerCase()));
-      count += names.size;
-    });
+    Object.values(shoppingByDepartment).forEach(items => count += new Set(items.map(i => i.product_name.trim().toLowerCase())).size);
     return count;
   }, [shoppingByDepartment]);
 
@@ -195,76 +139,51 @@ export function ShoppingListView({
         if (!mergedMap.has(name)) mergedMap.set(name, []);
         mergedMap.get(name)!.push(p.id);
       });
-      mergedMap.forEach(ids => {
-        if (ids.every(id => checked.has(id))) count++;
-      });
+      mergedMap.forEach(ids => { if (ids.every(id => checked.has(id))) count++; });
     });
     return count;
   }, [shoppingByDepartment, checked]);
 
+  if (shoppingList.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 bg-slate-50 min-h-screen">
+        <div className="bg-white p-8 rounded-3xl border border-dashed shadow-sm flex flex-col items-center font-sans">
+          <CheckCircle2 className="h-12 w-12 text-primary/30 mb-4" />
+          <p className="text-xl font-bold">הכל במלאי! 🎉</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 pb-24 bg-slate-50 min-h-screen pt-4 px-2 font-sans">
-      <div className={`relative bg-white border border-slate-200 shadow-sm transition-all duration-300 ${isSearching ? 'rounded-2xl p-4' : 'rounded-[2rem] p-6'}`}>
+      <div className={`relative bg-white border border-slate-200 shadow-sm rounded-[2rem] p-6`}>
         <div className="space-y-4">
           <div className="relative w-full">
-            <div className="absolute inset-y-0 right-0 flex items-center pr-4"><Search className="h-5 w-5 text-slate-400" /></div>
-            <Input
-              placeholder="חיפוש פריט או מחלקה..."
-              className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-            {isSearching && <button onClick={() => setSearchQuery("")} className="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><X className="h-5 w-5" /></button>}
+            <Search className="absolute right-4 top-3.5 h-5 w-5 text-slate-400" />
+            <Input placeholder="חיפוש..." className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
-
           {!isSearching && (
-            <div className="space-y-4 animate-in fade-in duration-300">
-              <div className="space-y-2 px-1">
-                <div className="flex items-center justify-between text-xs font-bold text-slate-500 uppercase">
-                  <span>התקדמות קנייה</span>
-                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded-full">{checkedMergedItems}/{totalMergedItems}</span>
-                </div>
-                <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-primary transition-all duration-500" style={{ width: `${totalMergedItems === 0 ? 0 : (checkedMergedItems / totalMergedItems) * 100}%` }} />
-                </div>
-              </div>
+            <div className="space-y-4">
               <div className="flex gap-2">
                 <Button onClick={onCopyList} variant="outline" className="flex-1 gap-2 rounded-xl h-12 border-slate-200 font-bold text-slate-700"><Copy className="h-4 w-4" /> העתק</Button>
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button className="flex-1 gap-2 rounded-xl h-12 font-bold" disabled={isFinishing || checked.size === 0}><CheckCircle2 className="h-4 w-4" /> סיום</Button>
+                    <Button className="flex-1 gap-2 rounded-xl h-12 font-bold" disabled={isFinishing || checked.size === 0}><CheckCircle2 className="h-4 w-4" /> סיום ({checkedMergedItems})</Button>
                   </AlertDialogTrigger>
                   <AlertDialogContent className="rounded-3xl p-6 font-sans">
-                    <AlertDialogHeader>
-                      <AlertDialogTitle className="text-right">סיימת לקנות?</AlertDialogTitle>
-                      <AlertDialogDescription className="text-right">הפריטים שסומנו יעברו למלאי והתוספות החד-פעמיות יימחקו לחלוטין.</AlertDialogDescription>
-                    </AlertDialogHeader>
+                    <AlertDialogHeader><AlertDialogTitle className="text-right">סיימת לקנות?</AlertDialogTitle></AlertDialogHeader>
                     <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
-                      <AlertDialogAction className="rounded-xl px-6 py-5 bg-indigo-600 text-white font-bold" onClick={() => { 
+                      <AlertDialogAction className="rounded-xl px-6 py-5 bg-indigo-600 text-white font-bold" onClick={() => {
                         const regularIds = new Set<string>();
-                        
                         checked.forEach(id => {
-                          let foundProduct: Product | undefined;
-                          for (const items of Object.values(shoppingByDepartment)) {
-                            const p = items.find(i => i.id === id);
-                            if (p) { foundProduct = p; break; }
-                          }
-                          
-                          if (foundProduct) {
-                            if (foundProduct.is_one_time) {
-                              onDeleteProduct(foundProduct.id);
-                            } else {
-                              regularIds.add(foundProduct.id);
-                            }
-                          }
+                          let p; for (const items of Object.values(shoppingByDepartment)) { p = items.find(i => i.id === id); if (p) break; }
+                          if (p?.is_one_time) onDeleteProduct(p.id); else if (p) regularIds.add(p.id);
                         });
-                        
-                        if (regularIds.size > 0) {
-                          onFinishChecked(regularIds);
-                        }
-                        setChecked(new Set()); 
+                        if (regularIds.size > 0) onFinishChecked(regularIds);
+                        setChecked(new Set());
                       }}>עדכן מלאי</AlertDialogAction>
-                      <AlertDialogCancel className="rounded-xl px-6 py-5 border-slate-200 font-medium">ביטול</AlertDialogCancel>
+                      <AlertDialogCancel className="rounded-xl px-6 py-5 border-slate-200">ביטול</AlertDialogCancel>
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
@@ -274,88 +193,57 @@ export function ShoppingListView({
         </div>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3">
         {filteredDepts.map((deptName) => {
           const rawItems = shoppingByDepartment[deptName];
           const filteredRaw = isSearching ? (deptName.toLowerCase().includes(lowerQuery) ? rawItems : rawItems.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))) : rawItems;
-          
           const mergedMap = new Map<string, MergedProduct>();
           filteredRaw.forEach(p => {
             const key = p.product_name.trim().toLowerCase();
             const qtyNeeded = p.is_one_time ? p.base_quantity : Math.max(0, p.base_quantity - (p.current_stock || 0));
-            
-            if (!mergedMap.has(key)) {
-              mergedMap.set(key, {
-                id: p.id,
-                product_name: p.product_name.trim(),
-                totalQty: qtyNeeded,
-                unit: p.unit || "יחידות",
-                ids: [p.id],
-                is_one_time_only: !!p.is_one_time,
-                has_one_time_extra: !!p.is_one_time,
-                products: [p]
-              });
-            } else {
-              const existing = mergedMap.get(key)!;
-              existing.totalQty += qtyNeeded;
-              existing.ids.push(p.id);
-              existing.is_one_time_only = existing.is_one_time_only && !!p.is_one_time;
-              existing.has_one_time_extra = existing.has_one_time_extra || !!p.is_one_time;
-              existing.products.push(p);
-            }
+            if (!mergedMap.has(key)) mergedMap.set(key, { id: p.id, product_name: p.product_name.trim(), totalQty: qtyNeeded, unit: p.unit || "יח'", ids: [p.id], is_one_time_only: !!p.is_one_time, has_one_time_extra: !!p.is_one_time, products: [p] });
+            else { const e = mergedMap.get(key)!; e.totalQty += qtyNeeded; e.ids.push(p.id); e.is_one_time_only = e.is_one_time_only && !!p.is_one_time; e.has_one_time_extra = e.has_one_time_extra || !!p.is_one_time; e.products.push(p); }
           });
-          const mergedItems = Array.from(mergedMap.values());
-
           const config = DEPT_CONFIG[deptName] || DEPT_CONFIG["כללי"];
           const Icon = config.icon;
 
           return (
-            <Collapsible key={deptName} open={isSearching ? true : (openDepts[deptName] !== false)} onOpenChange={(open) => setOpenDepts(prev => ({ ...prev, [deptName]: open }))} className={`bg-white rounded-2xl shadow-sm border border-border overflow-hidden border-r-8 ${config.border}`}>
-              <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-5 font-bold text-foreground outline-none">
+            <Collapsible key={deptName} open={isSearching ? true : (openDepts[deptName] !== false)} onOpenChange={(o) => setOpenDepts(p => ({ ...p, [deptName]: o }))} className={`bg-white rounded-2xl shadow-sm border border-border border-r-8 ${config.border}`}>
+              <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-4 font-bold outline-none">
                 <div className="flex items-center gap-3">
-                  <div className={`p-2 rounded-lg bg-slate-50`}><Icon className={`h-5 w-5 ${config.color}`} /></div>
-                  <span className="text-lg">{deptName}</span>
-                  <span className="bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full text-xs font-black">{mergedItems.length}</span>
+                  <div className="p-1.5 rounded-lg bg-slate-50"><Icon className={`h-4 w-4 ${config.color}`} /></div>
+                  <span className="text-base">{deptName}</span>
                 </div>
-                <ChevronDown className={`h-5 w-5 text-slate-300 transition-transform ${openDepts[deptName] !== false || isSearching ? "rotate-180" : ""}`} />
+                <ChevronDown className={`h-4 w-4 text-slate-300 transition-transform ${openDepts[deptName] !== false ? "rotate-180" : ""}`} />
               </CollapsibleTrigger>
-              <CollapsibleContent className="px-3 pb-3">
-                <div className="flex flex-col gap-2 border-t border-border/50 pt-3">
-                  {mergedItems.map((merged) => {
+              <CollapsibleContent className="px-2 pb-2">
+                <div className="flex flex-col gap-1.5 border-t border-border/50 pt-2">
+                  {Array.from(mergedMap.values()).map((merged) => {
                     const isChecked = merged.ids.every(id => checked.has(id));
-                    
-                    const freeFromTags = getFreeFromLabels(merged.product_name);
                     const unitLabel = formatUnit(merged.unit);
+                    const tags = getFreeFromLabels(merged.product_name);
 
                     return (
-                      <div key={merged.id} className={`flex items-center justify-between rounded-xl px-4 py-3.5 border transition-all ${isChecked ? "bg-muted/40 opacity-50" : "bg-white border-gray-100"}`}>
-                        <div className="flex items-center gap-4 flex-1 cursor-pointer overflow-hidden" onClick={() => {
-                          const next = new Set(checked);
-                          if (isChecked) {
-                            merged.ids.forEach(id => next.delete(id));
-                          } else {
-                            merged.ids.forEach(id => next.add(id));
-                          }
-                          setChecked(next);
-                        }} >
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 shrink-0 ${isChecked ? "bg-primary border-primary text-white" : "bg-white border-muted-foreground/30"}`}>{isChecked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}</div>
+                      <div key={merged.id} className={`flex items-center justify-between rounded-xl px-3 py-2.5 border transition-all ${isChecked ? "bg-muted/40 opacity-50" : "bg-white border-gray-100"}`}>
+                        <div className="flex items-center gap-3 flex-1 cursor-pointer overflow-hidden" onClick={() => {
+                          const n = new Set(checked); if (isChecked) merged.ids.forEach(id => n.delete(id)); else merged.ids.forEach(id => n.add(id)); setChecked(n);
+                        }}>
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 shrink-0 ${isChecked ? "bg-primary border-primary text-white" : "bg-white border-muted-foreground/30"}`}>{isChecked && <Check className="h-3 w-3" strokeWidth={3} />}</div>
                           <div className="flex flex-col text-right flex-1 overflow-hidden">
-                            <span className={`text-[1.05rem] font-medium truncate ${isChecked ? "line-through text-muted-foreground" : ""}`}>{merged.product_name}</span>
-                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                              <span className="text-xs text-primary font-bold">{merged.totalQty} {unitLabel}</span>
-                              
-                              {freeFromTags.map(tag => (
-                                <span key={tag} className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-bold border border-sky-100 shrink-0">{tag}</span>
-                              ))}
-                              
-                              {merged.is_one_time_only && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold shrink-0">חד-פעמי</span>}
-                              {!merged.is_one_time_only && merged.has_one_time_extra && <span className="flex items-center gap-1 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold shrink-0"><Zap className="h-3 w-3 fill-amber-700"/> כמות מוגדלת</span>}
+                            <div className="flex items-baseline gap-2 overflow-hidden">
+                              <span className={`text-[1rem] font-bold truncate ${isChecked ? "line-through text-muted-foreground" : "text-slate-800"}`}>{merged.product_name}</span>
+                              <span className={`text-xs font-black shrink-0 ${isChecked ? "opacity-30" : "text-primary"}`}>({merged.totalQty} {unitLabel})</span>
                             </div>
+                            {(tags.length > 0 || merged.is_one_time_only || (merged.has_one_time_extra && !merged.is_one_time_only)) && (
+                              <div className="flex items-center gap-1 mt-0.5 flex-wrap">
+                                {tags.map(t => <span key={t} className="text-[9px] bg-sky-50 text-sky-700 px-1 py-0.5 rounded font-bold border border-sky-100">{t}</span>)}
+                                {merged.is_one_time_only && <span className="text-[9px] bg-orange-100 text-orange-700 px-1 py-0.5 rounded font-bold">חד-פעמי</span>}
+                                {!merged.is_one_time_only && merged.has_one_time_extra && <span className="flex items-center gap-1 text-[9px] bg-amber-100 text-amber-700 px-1 py-0.5 rounded font-bold"><Zap className="h-2 w-2 fill-amber-700"/> מוגדל</span>}
+                              </div>
+                            )}
                           </div>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(merged); }} className="text-muted-foreground/40 p-2 hover:text-red-500 rounded-lg shrink-0">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(merged); }} className="text-muted-foreground/30 p-2 hover:text-red-500 transition-colors"><Trash2 className="h-4 w-4" /></button>
                       </div>
                     );
                   })}
@@ -366,19 +254,15 @@ export function ShoppingListView({
         })}
       </div>
 
-      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+      <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
         <AlertDialogContent className="rounded-3xl p-6 font-sans">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-right">{dialogContent.title}</AlertDialogTitle>
-            <AlertDialogDescription className="text-right mt-2 font-medium">
-              {dialogContent.desc}
-            </AlertDialogDescription>
+            <AlertDialogDescription className="text-right mt-2">{dialogContent.desc}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
-            <AlertDialogAction className="rounded-xl px-6 py-5 bg-red-500 hover:bg-red-600 text-white font-bold" onClick={confirmDelete}>
-              {dialogContent.btn}
-            </AlertDialogAction>
-            <AlertDialogCancel className="rounded-xl px-6 py-5 font-medium border border-slate-200">ביטול</AlertDialogCancel>
+            <AlertDialogAction className="rounded-xl px-6 py-5 bg-red-500 font-bold" onClick={confirmDelete}>{dialogContent.btn}</AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl px-6 py-5">ביטול</AlertDialogCancel>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
