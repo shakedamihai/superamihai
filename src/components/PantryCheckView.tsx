@@ -2,12 +2,12 @@ import {
   ChevronDown, Pencil, GripVertical, Search, X, Trash2, Settings2, Lock,
   Beef, Carrot, Milk, Snowflake, Sparkles, 
   Wheat, CupSoda, Baby, ShoppingBag, Apple, Fish, Package, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy,
-  CookingPot, Grape
+  CookingPot, Grape 
 } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { Department } from "@/hooks/useDepartments";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { EditProductDialog } from "./EditProductDialog";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogFooter } from "@/components/ui/alert-dialog";
@@ -15,7 +15,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors, 
-  DragEndEvent, DragStartEvent, MeasuringStrategy, DragOverlay, defaultDropAnimationSideEffects
+  DragEndEvent, DragStartEvent, MeasuringStrategy, DragOverlay, defaultDropAnimationSideEffects,
+  CollisionDetection
 } from "@dnd-kit/core";
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
@@ -29,7 +30,7 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "דגים": { icon: Fish, color: "text-cyan-500", border: "border-r-cyan-500" },
   "קפואים": { icon: Snowflake, color: "text-indigo-600", border: "border-r-indigo-600" },
   "מזווה ושימורים": { icon: Package, color: "text-orange-500", border: "border-r-orange-500" },
-  "תבלינים ואפייה": { icon: CookingPot, color: "text-stone-600", border: "border-r-stone-600" }, // צבע אבן מובדל לגמרי
+  "תבלינים ואפייה": { icon: CookingPot, color: "text-stone-600", border: "border-r-stone-600" }, // צבע אבן כהה ומובדל
   "מאפייה ולחם": { icon: Wheat, color: "text-yellow-500", border: "border-r-yellow-500" },
   "חטיפים ומתוקים": { icon: Candy, color: "text-purple-500", border: "border-r-purple-500" },
   "משקאות": { icon: CupSoda, color: "text-indigo-500", border: "border-r-indigo-500" },
@@ -37,11 +38,12 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "חומרי ניקוי": { icon: Droplets, color: "text-slate-500", border: "border-r-slate-500" },
   "חד-פעמי": { icon: UtensilsCrossed, color: "text-rose-400", border: "border-r-rose-400" },
   "תינוקות": { icon: Baby, color: "text-teal-500", border: "border-r-teal-500" },
-  "פיצוחים ופירות יבשים": { icon: Grape, color: "text-amber-700", border: "border-r-amber-700" }, // צבע חום-כתום (הצבע הקודם של תבלינים)
+  "פיצוחים ופירות יבשים": { icon: Grape, color: "text-amber-700", border: "border-r-amber-700" }, // צבע ענבר שונה מהתבלינים
   "מעדניה": { icon: ChefHat, color: "text-violet-600", border: "border-r-violet-600" },
   "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
   "כללי": { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-400" },
 };
+
 const SYSTEM_UNITS = ["יחידות", 'ק"ג', "ליטרים", "חבילות", "מארזים", "בקבוקים", "פחיות", "גלילים", "שפופרות", "טבליות", "קפסולות", "זוגות", "גרם"];
 
 interface PantryCheckViewProps {
@@ -56,6 +58,16 @@ interface PantryCheckViewProps {
   departmentNames: string[];
   onAddDepartment: (name: string) => void;
 }
+
+// מנגנון זיהוי התנגשויות חכם: מפריד בין מחלקות לפריטים בזמן גרירה
+const customCollisionDetection: CollisionDetection = (args) => {
+  if (args.active.id.toString().startsWith("dept-")) {
+    const deptDroppables = args.droppableContainers.filter(d => String(d.id).startsWith("dept-"));
+    return closestCenter({ ...args, droppableContainers: deptDroppables });
+  }
+  const itemDroppables = args.droppableContainers.filter(d => !String(d.id).startsWith("dept-"));
+  return closestCenter({ ...args, droppableContainers: itemDroppables });
+};
 
 function SortableDepartmentItem({ 
   id, 
@@ -111,10 +123,13 @@ export function PantryCheckView({
   
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isPreparingDrag, setIsPreparingDrag] = useState(false);
+  
+  // נעילת רענון כדי למנוע את ה"קפיצה חזרה" של פריט או מחלקה אחרי שעוזבים
+  const pendingReorderRef = useRef(false);
 
   const isSearching = searchQuery.length > 0;
   const isDraggingDept = activeId?.startsWith("dept-");
-  const forceCollapse = isPreparingDrag || isDraggingDept;
+  const forceCollapse = isPreparingDrag || isDraggingDept; // כאן קורה ה"קיבוץ"
 
   useEffect(() => {
     const handlePointerUp = () => setIsPreparingDrag(false);
@@ -148,7 +163,8 @@ export function PantryCheckView({
   const [localRecurring, setLocalRecurring] = useState<Record<string, Product[]>>(baseRecurringByDept);
 
   useEffect(() => { 
-    if (!isDraggingDept && !isPreparingDrag) {
+    // נעדכן את הנתונים מהשרת רק אם אנחנו לא באמצע גרירה ולא מיד אחרי שסיימנו
+    if (!isDraggingDept && !isPreparingDrag && !pendingReorderRef.current) {
       setLocalDepts(sortedDepts);
       setLocalRecurring(baseRecurringByDept);
     }
@@ -190,6 +206,7 @@ export function PantryCheckView({
     const activeStr = String(active.id);
     const overStr = String(over.id);
 
+    // סידור מחלקות
     if (activeStr.startsWith("dept-") && overStr.startsWith("dept-")) {
       const aId = activeStr.replace("dept-", "");
       const oId = overStr.replace("dept-", "");
@@ -199,6 +216,11 @@ export function PantryCheckView({
       if (oldIdx !== -1 && newIdx !== -1) {
         const reordered = arrayMove(localDepts, oldIdx, newIdx);
         setLocalDepts(reordered);
+        
+        // נעילת רענון כדי למנוע קפיצה חזרה
+        pendingReorderRef.current = true;
+        setTimeout(() => { pendingReorderRef.current = false; }, 2000);
+        
         onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
         setTimeout(() => {
           document.getElementById(`dept-wrapper-${aId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -207,6 +229,7 @@ export function PantryCheckView({
       return;
     }
 
+    // סידור פריטים
     let foundDeptName: string | null = null;
     for (const [name, items] of Object.entries(localRecurring)) {
       if (items.some((p) => p.id === activeStr)) { foundDeptName = name; break; }
@@ -219,6 +242,11 @@ export function PantryCheckView({
       if (oldIndex !== -1 && newIndex !== -1) {
         const reordered = arrayMove(items, oldIndex, newIndex);
         setLocalRecurring(prev => ({ ...prev, [foundDeptName as string]: reordered }));
+        
+        // נעילת רענון כדי למנוע קפיצה חזרה
+        pendingReorderRef.current = true;
+        setTimeout(() => { pendingReorderRef.current = false; }, 2000);
+
         onReorderProducts(reordered.map((p, i) => ({ id: p.id, sort_order: i })));
       }
     }
@@ -248,7 +276,13 @@ export function PantryCheckView({
           </div>
         </div>
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd} measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}>
+        <DndContext 
+          sensors={sensors} 
+          collisionDetection={customCollisionDetection} 
+          onDragStart={handleDragStart} 
+          onDragEnd={handleDragEnd} 
+          measuring={{ droppable: { strategy: MeasuringStrategy.Always } }}
+        >
           <div className="flex flex-col gap-4 w-full">
             <SortableContext items={displayDepts.map(d => `dept-${d.id}`)} strategy={verticalListSortingStrategy}>
               {displayDepts.map((dept) => {
