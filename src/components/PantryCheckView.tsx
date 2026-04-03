@@ -369,8 +369,7 @@ export function PantryCheckView({
                   </div>
                 </div>
               </div>
-            ) : activeProduct ? (
-              // תצוגת מוצר נגרר (חדש!)
+    ) : activeProduct ? (
               <div className="opacity-100 drop-shadow-xl scale-[1.02]">
                 <div className={`flex items-center justify-between rounded-xl px-4 py-3 border ${activeProduct.current_stock === 0 ? "bg-red-50 border-red-200" : "bg-white border-slate-200"}`}>
                   <div className="flex items-center gap-3 flex-1">
@@ -379,7 +378,7 @@ export function PantryCheckView({
                       <span className="text-[1.05rem] font-medium text-slate-800">{activeProduct.product_name}</span>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-xs text-primary font-bold">{activeProduct.base_quantity} {activeProduct.unit || "יחידות"}</span>
-                        {isLactoseFree(activeProduct.product_name) && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">ללא לקטוז</span>}
+                        {/* התווית הוסרה מכאן */}
                       </div>
                     </div>
                   </div>
