@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Pencil, Trash2, Plus, Minus, X } from "lucide-react"; // הוספנו את X
+import { GripVertical, Pencil, Trash2, Plus, Minus } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { isLactoseFree } from "@/hooks/useDepartments";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ interface SortableProductRowProps {
 export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }: SortableProductRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
 
-  // סטייט מקומי לעדכון מיידי על המסך (ללא המתנה למסד הנתונים)
+  // סטייט מקומי לעדכון מיידי על המסך (Optimistic UI)
   const [localStock, setLocalStock] = useState(product.current_stock ?? 0);
 
   // סנכרון במקרה שהנתון מתעדכן מבחוץ
@@ -32,7 +32,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     position: 'relative' as const,
   };
 
-  // פונקציה פנימית לניקוי והצגת יחידות מידה בצורה מקצועית
   const displayUnit = (u?: string) => {
     if (!u || u.trim() === "") return "יחידות";
     const lowerUnit = u.toLowerCase();
@@ -53,7 +52,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
   };
   const step = getStep(product.unit);
 
-  // פונקציית עדכון שמשנה קודם את המסך, ורק אז שולחת לשרת
   const handleStockChange = (newVal: number) => {
     const validVal = Math.max(0, newVal);
     setLocalStock(validVal); // עדכון מיידי של הממשק
@@ -69,7 +67,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     }
   };
 
-  // אלגוריתם תצוגת המלאי החכמה
   const getStockBadge = () => {
     if (localStock === 0) {
       return <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold shrink-0">חסר במלאי</span>;
@@ -77,7 +74,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     if (localStock >= (product.base_quantity || 1)) {
       return <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold shrink-0">במלאי</span>;
     }
-    // תצוגת מלאי חלקי מפורטת
     return (
       <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold shrink-0">
         {localStock} מתוך {product.base_quantity} {formattedUnit} במלאי
@@ -91,13 +87,13 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
       style={style}
       className={`flex rounded-xl px-3 py-3 border transition-colors md:items-center ${isOutOfStock ? "bg-red-50 border-red-100" : "bg-white border-slate-100 shadow-sm"}`}
     >
-      {/* פריסה למובייל: עמודה עם שתי שורות (שם למעלה, פקדים למטה) */}
-      <div className="flex flex-col gap-3 w-full md:flex-row md:items-center md:justify-between md:gap-0">
+      {/* פריסה למובייל: הכל מיושר לימין בצורה אחידה */}
+      <div className="flex flex-col gap-3.5 w-full md:flex-row md:items-center md:justify-between md:gap-0">
         
-        {/* שורה 1 (או צד ימין בדסקטופ): שם המוצר והתגיות */}
-        <div className="flex items-center gap-2 flex-1 overflow-hidden pr-1 md:pr-0">
+        {/* שורה 1: שם המוצר והתגיות - מיושר לימין */}
+        <div className="flex items-start gap-2 flex-1 overflow-hidden pr-1 md:items-center md:pr-0">
           <div
-            className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing p-1.5 touch-none shrink-0 md:p-1"
+            className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing p-1.5 touch-none shrink-0 md:p-1 mt-1 md:mt-0"
             {...attributes}
             {...listeners}
             title="גרור לשינוי סדר"
@@ -118,9 +114,28 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
           </div>
         </div>
 
-        {/* שורה 2 (או צד שמאל בדסקטופ): פקדי מלאי ועריכה (עכשיו גם במובייל זה אופקי למטה) */}
-        <div className="flex items-center gap-1.5 justify-end shrink-0 pl-1 border-t border-slate-100 pt-3 md:border-t-0 md:pt-0 md:gap-1">
+        {/* שורה 2: אזור פקדים מוגדר - מעכשיו גם במובייל זה אופקי למטה ומיושר לימין */}
+        <div className="flex items-center gap-1.5 justify-end border-t border-slate-100/50 pt-3 md:border-t-0 md:pt-0 md:gap-1.5 shrink-0 pl-1">
           
+          {/* פקדי עריכה/מחיקה */}
+          <button onClick={onEdit} className="text-slate-400 p-2 hover:text-indigo-600 rounded-lg transition-colors md:p-1.5"><Pencil className="h-4 w-4 md:h-3.5 md:w-3.5" /></button>
+          <button onClick={onDelete} className="text-slate-400 p-2 hover:text-red-500 rounded-lg transition-colors md:p-1.5"><Trash2 className="h-4 w-4 md:h-3.5 md:w-3.5" /></button>
+          
+          {/* מפריד עדין */}
+          <div className="h-6 w-px bg-slate-100/50 mx-1 md:hidden" />
+
+          {/* כפתור "סמן כחסר" - חזר להיות בטקסט מלא גם במובייל */}
+          {!isOutOfStock && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9 px-3 text-[11px] font-bold border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800 md:h-7 md:px-2 md:text-[10px]"
+              onClick={() => handleStockChange(0)}
+            >
+              סמן כחסר
+            </Button>
+          )}
+
           {/* שדה הזנת מלאי עם פלוס ומינוס */}
           <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg h-9 overflow-hidden md:h-7">
             <button 
@@ -143,21 +158,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
             </button>
           </div>
 
-          {/* כפתור "סמן כחסר" בצבע אפור/ניטרלי. משנה אייקון במובייל לחיסכון במקום */}
-          {!isOutOfStock && (
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-9 px-3 text-[11px] font-bold border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800 md:h-7 md:px-2 md:text-[10px]"
-              onClick={() => handleStockChange(0)}
-            >
-              <X className="h-4 w-4 md:hidden" />
-              <span className="hidden md:block">סמן כחסר</span>
-            </Button>
-          )}
-
-          <button onClick={onEdit} className="text-slate-400 p-2 hover:text-indigo-600 rounded-lg transition-colors md:p-1.5"><Pencil className="h-4 w-4 md:h-3.5 md:w-3.5" /></button>
-          <button onClick={onDelete} className="text-slate-400 p-2 hover:text-red-500 rounded-lg transition-colors md:p-1.5"><Trash2 className="h-4 w-4 md:h-3.5 md:w-3.5" /></button>
         </div>
       </div>
     </div>
