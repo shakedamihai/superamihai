@@ -2,7 +2,7 @@ import {
   Plus, Search, ChevronDown, Edit2, Trash2, Package, 
   Beef, Carrot, Milk, Snowflake, Sparkles, Wheat, CupSoda, Baby, ShoppingBag, 
   Apple, Fish, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy,
-  CookingPot, Grape, AlertCircle, CheckCircle2, AlertTriangle
+  CookingPot, Grape, AlertCircle
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,6 +10,16 @@ import type { Product } from "@/hooks/useProducts";
 import { useDepartments } from "@/hooks/useDepartments";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState, useMemo } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string, bg: string }> = {
   "ירקות": { icon: Carrot, color: "text-emerald-500", border: "border-r-emerald-500", bg: "bg-emerald-50" },
@@ -53,6 +63,7 @@ export function PantryCheckView({
   const [openDepts, setOpenDepts] = useState<Record<string, boolean>>(() => 
     Object.keys(productsByDepartment).reduce((acc, dept) => ({ ...acc, [dept]: true }), {})
   );
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
 
   const filteredDepts = useMemo(() => {
     const sortedDepts = Object.keys(productsByDepartment).sort((a, b) => {
@@ -60,7 +71,6 @@ export function PantryCheckView({
       const deptB = (departments || []).find(d => d.name === b);
       return (deptA?.sort_order ?? 999) - (deptB?.sort_order ?? 999);
     });
-
     if (!searchQuery) return sortedDepts;
     const lowerQuery = searchQuery.toLowerCase();
     return sortedDepts.filter(dept => 
@@ -69,10 +79,11 @@ export function PantryCheckView({
     );
   }, [productsByDepartment, searchQuery, departments]);
 
-  const getStockStatus = (current: number, base: number) => {
-    if (current === 0) return { label: "חסר במלאי", color: "text-red-600 bg-red-50 border-red-100", icon: AlertCircle };
-    if (current < base) return { label: "מלאי נמוך", color: "text-orange-600 bg-orange-50 border-orange-100", icon: AlertTriangle };
-    return { label: "במלאי", color: "text-emerald-600 bg-emerald-50 border-emerald-100", icon: CheckCircle2 };
+  // לוגיקת תוויות המלאי המדויקת
+  const getStockLabel = (current: number, base: number) => {
+    if (current === 0) return { text: "חסר במלאי", style: "bg-red-50 text-red-600 border-red-100" };
+    if (current < base) return { text: `${current} מתוך ${base} במלאי`, style: "bg-orange-50 text-orange-600 border-orange-100" };
+    return { text: "במלאי", style: "bg-emerald-50 text-emerald-600 border-emerald-100" };
   };
 
   return (
@@ -83,7 +94,7 @@ export function PantryCheckView({
             <Search className="absolute right-4 top-3.5 h-5 w-5 text-slate-400" />
             <Input 
               placeholder="חיפוש מוצר או מחלקה..." 
-              className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg text-right outline-none"
+              className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg text-right"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
@@ -99,11 +110,10 @@ export function PantryCheckView({
         {filteredDepts.map((deptName) => {
           const config = DEPT_CONFIG[deptName] || DEPT_CONFIG["כללי"];
           const products = productsByDepartment[deptName];
-
           return (
-            <Collapsible key={deptName} open={openDepts[deptName] !== false} onOpenChange={(open) => setOpenDepts(prev => ({ ...prev, [deptName]: open }))} className={`bg-white rounded-2xl shadow-sm border border-slate-200 border-r-8 ${config.border} overflow-hidden`}>
+            <Collapsible key={deptName} open={openDepts[deptName] !== false} onOpenChange={(o) => setOpenDepts(p => ({ ...p, [deptName]: o }))} className={`bg-white rounded-2xl shadow-sm border border-slate-200 border-r-8 ${config.border} overflow-hidden`}>
               <CollapsibleTrigger className="w-full flex items-center justify-between px-5 py-5 font-bold outline-none">
-                <div className="flex items-center gap-3 text-right">
+                <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-xl ${config.bg}`}><config.icon className={`h-5 w-5 ${config.color}`} /></div>
                   <div className="flex flex-col items-start">
                     <span className="text-lg text-slate-800">{deptName}</span>
@@ -112,45 +122,42 @@ export function PantryCheckView({
                 </div>
                 <ChevronDown className={`h-5 w-5 text-slate-300 transition-transform ${openDepts[deptName] !== false ? "rotate-180" : ""}`} />
               </CollapsibleTrigger>
-              
               <CollapsibleContent className="border-t border-slate-100">
                 {products.map((product) => {
-                  const status = getStockStatus(product.current_stock, product.base_quantity);
-                  const StatusIcon = status.icon;
-
+                  const status = getStockLabel(product.current_stock, product.base_quantity);
                   return (
                     <div key={product.id} className="flex items-center justify-between px-5 py-4 border-b border-slate-300 last:border-0 transition-colors">
                       <div className="flex flex-col gap-1.5 flex-1 text-right">
                         <div className="flex items-center gap-2 justify-start">
                           <span className="font-bold text-slate-800 text-base">{product.product_name}</span>
                           {product.is_one_time && (
-                            <span className="text-[9px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-full font-bold">חד-פעמי</span>
+                            <span className="text-[10px] bg-orange-50 text-orange-600 border border-orange-100 py-0 px-1.5 rounded-full font-bold">חד-פעמי</span>
                           )}
                         </div>
-                        
                         <div className="flex items-center gap-2 justify-start">
-                          <div className={`flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-bold ${status.color}`}>
-                            <StatusIcon className="h-3 w-3" />
-                            {status.label}
-                          </div>
-                          <span className="text-slate-400 text-[11px] font-medium">
+                          {/* תווית ימנית: כמות ויחידות */}
+                          <span className="text-slate-500 text-[11px] font-bold bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">
                             {product.current_stock} / {product.base_quantity} {product.unit || 'יח\''}
+                          </span>
+                          {/* תווית שמאלית: סטטוס צבעוני */}
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${status.style}`}>
+                            {status.text}
                           </span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-1">
                         <div className="flex items-center bg-slate-100 rounded-xl p-1 ml-2">
-                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white" onClick={() => onUpdateStock(product.id, Math.max(0, product.current_stock - 1))}>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white active:scale-95 transition-transform" onClick={() => onUpdateStock(product.id, Math.max(0, product.current_stock - 1))}>
                             <span className="text-xl font-bold">-</span>
                           </Button>
                           <div className="w-10 text-center font-black text-slate-800 text-lg">{product.current_stock}</div>
-                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white" onClick={() => onUpdateStock(product.id, product.current_stock + 1)}>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg hover:bg-white active:scale-95 transition-transform" onClick={() => onUpdateStock(product.id, product.current_stock + 1)}>
                             <span className="text-xl font-bold">+</span>
                           </Button>
                         </div>
                         <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-300" onClick={() => onEditProduct(product)}><Edit2 className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-300 hover:text-red-500" onClick={() => onDeleteProduct(product.id)}><Trash2 className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" className="h-10 w-10 text-slate-300 hover:text-red-500" onClick={() => setProductToDelete(product)}><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </div>
                   );
@@ -160,6 +167,25 @@ export function PantryCheckView({
           );
         })}
       </div>
+
+      {/* דיאלוג אישור מחיקה */}
+      <AlertDialog open={!!productToDelete} onOpenChange={(o) => !o && setProductToDelete(null)}>
+        <AlertDialogContent className="rounded-3xl p-6 font-sans text-right">
+          <AlertDialogHeader>
+            <AlertDialogTitle>למחוק את "{productToDelete?.product_name}"?</AlertDialogTitle>
+            <AlertDialogDescription className="mt-2 text-slate-600">
+              פעולה זו תסיר את המוצר לצמיתות מהמזווה שלך.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
+            <AlertDialogAction className="rounded-xl px-6 py-5 bg-red-500 text-white font-bold" onClick={() => {
+              if (productToDelete) onDeleteProduct(productToDelete.id);
+              setProductToDelete(null);
+            }}>מחק מוצר</AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl px-6 py-5 border-slate-200 text-slate-700">ביטול</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
