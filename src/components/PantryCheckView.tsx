@@ -187,7 +187,7 @@ export function PantryCheckView({
   const ActiveDeptIcon = activeDeptConfig?.icon || ShoppingBag;
   const activeItemsCount = activeDept ? (localRecurring[activeDept.name]?.length || 0) : 0;
 
-  // מציאת הפריט הפעיל לגרירת מוצר ב-Overlay
+  // מציאת הפריט הפעיל לגרירת מוצר
   const activeProduct = useMemo(() => {
     if (!activeId || isDraggingDept) return null;
     for (const items of Object.values(localRecurring)) {
@@ -345,6 +345,7 @@ export function PantryCheckView({
           {/* Drag Overlay: מטפל גם במחלקות וגם בפריטים בודדים */}
           <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: "0.4" } } }) }}>
             {activeDept && activeDeptConfig ? (
+              // תצוגת מחלקה נגררת
               <div className="w-full flex justify-center opacity-100 drop-shadow-2xl">
                 <div className="w-full max-w-[calc(100vw-20px)] md:max-w-[calc(100vw-32px)]">
                   <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${activeDeptConfig.border}`}>
@@ -369,6 +370,7 @@ export function PantryCheckView({
                 </div>
               </div>
             ) : activeProduct ? (
+              // תצוגת מוצר נגרר (חדש!)
               <div className="opacity-100 drop-shadow-xl scale-[1.02]">
                 <div className={`flex items-center justify-between rounded-xl px-4 py-3 border ${activeProduct.current_stock === 0 ? "bg-red-50 border-red-200" : "bg-white border-slate-200"}`}>
                   <div className="flex items-center gap-3 flex-1">
