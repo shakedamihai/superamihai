@@ -2,7 +2,7 @@ import {
   ChevronDown, Pencil, GripVertical, Search, X, Trash2, Settings2, Lock,
   Beef, Carrot, Milk, Snowflake, Sparkles, 
   Wheat, CupSoda, Baby, ShoppingBag, Apple, Fish, Package, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy,
-  CookingPot, Grape // האייקונים שסיכמנו עליהם
+  CookingPot, Grape
 } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { Department } from "@/hooks/useDepartments";
