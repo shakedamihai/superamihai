@@ -21,6 +21,7 @@ import {
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { SortableProductRow } from "./SortableProductRow";
+import { isLactoseFree } from "@/hooks/useDepartments";
 
 const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> = {
   "ירקות": { icon: Carrot, color: "text-emerald-500", border: "border-r-emerald-500" },
@@ -30,7 +31,7 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "דגים": { icon: Fish, color: "text-cyan-500", border: "border-r-cyan-500" },
   "קפואים": { icon: Snowflake, color: "text-indigo-600", border: "border-r-indigo-600" },
   "מזווה ושימורים": { icon: Package, color: "text-orange-500", border: "border-r-orange-500" },
-  "תבלינים ואפייה": { icon: CookingPot, color: "text-stone-600", border: "border-r-stone-600" }, // צבע אבן כהה ומובדל
+  "תבלינים ואפייה": { icon: CookingPot, color: "text-stone-600", border: "border-r-stone-600" },
   "מאפייה ולחם": { icon: Wheat, color: "text-yellow-500", border: "border-r-yellow-500" },
   "חטיפים ומתוקים": { icon: Candy, color: "text-purple-500", border: "border-r-purple-500" },
   "משקאות": { icon: CupSoda, color: "text-indigo-500", border: "border-r-indigo-500" },
@@ -38,7 +39,7 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "חומרי ניקוי": { icon: Droplets, color: "text-slate-500", border: "border-r-slate-500" },
   "חד-פעמי": { icon: UtensilsCrossed, color: "text-rose-400", border: "border-r-rose-400" },
   "תינוקות": { icon: Baby, color: "text-teal-500", border: "border-r-teal-500" },
-  "פיצוחים ופירות יבשים": { icon: Grape, color: "text-amber-700", border: "border-r-amber-700" }, // צבע ענבר שונה מהתבלינים
+  "פיצוחים ופירות יבשים": { icon: Grape, color: "text-amber-700", border: "border-r-amber-700" },
   "מעדניה": { icon: ChefHat, color: "text-violet-600", border: "border-r-violet-600" },
   "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
   "כללי": { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-400" },
@@ -59,7 +60,6 @@ interface PantryCheckViewProps {
   onAddDepartment: (name: string) => void;
 }
 
-// מנגנון זיהוי התנגשויות חכם: מפריד בין מחלקות לפריטים בזמן גרירה
 const customCollisionDetection: CollisionDetection = (args) => {
   if (args.active.id.toString().startsWith("dept-")) {
     const deptDroppables = args.droppableContainers.filter(d => String(d.id).startsWith("dept-"));
@@ -124,12 +124,11 @@ export function PantryCheckView({
   const [activeId, setActiveId] = useState<string | null>(null);
   const [isPreparingDrag, setIsPreparingDrag] = useState(false);
   
-  // נעילת רענון כדי למנוע את ה"קפיצה חזרה" של פריט או מחלקה אחרי שעוזבים
   const pendingReorderRef = useRef(false);
 
   const isSearching = searchQuery.length > 0;
   const isDraggingDept = activeId?.startsWith("dept-");
-  const forceCollapse = isPreparingDrag || isDraggingDept; // כאן קורה ה"קיבוץ"
+  const forceCollapse = isPreparingDrag || isDraggingDept;
 
   useEffect(() => {
     const handlePointerUp = () => setIsPreparingDrag(false);
@@ -163,7 +162,6 @@ export function PantryCheckView({
   const [localRecurring, setLocalRecurring] = useState<Record<string, Product[]>>(baseRecurringByDept);
 
   useEffect(() => { 
-    // נעדכן את הנתונים מהשרת רק אם אנחנו לא באמצע גרירה ולא מיד אחרי שסיימנו
     if (!isDraggingDept && !isPreparingDrag && !pendingReorderRef.current) {
       setLocalDepts(sortedDepts);
       setLocalRecurring(baseRecurringByDept);
@@ -189,6 +187,16 @@ export function PantryCheckView({
   const ActiveDeptIcon = activeDeptConfig?.icon || ShoppingBag;
   const activeItemsCount = activeDept ? (localRecurring[activeDept.name]?.length || 0) : 0;
 
+  // מציאת הפריט הפעיל לגרירת מוצר
+  const activeProduct = useMemo(() => {
+    if (!activeId || isDraggingDept) return null;
+    for (const items of Object.values(localRecurring)) {
+      const found = items.find(p => p.id === activeId);
+      if (found) return found;
+    }
+    return null;
+  }, [activeId, isDraggingDept, localRecurring]);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }), 
     useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 10 } })
@@ -206,7 +214,6 @@ export function PantryCheckView({
     const activeStr = String(active.id);
     const overStr = String(over.id);
 
-    // סידור מחלקות
     if (activeStr.startsWith("dept-") && overStr.startsWith("dept-")) {
       const aId = activeStr.replace("dept-", "");
       const oId = overStr.replace("dept-", "");
@@ -217,19 +224,14 @@ export function PantryCheckView({
         const reordered = arrayMove(localDepts, oldIdx, newIdx);
         setLocalDepts(reordered);
         
-        // נעילת רענון כדי למנוע קפיצה חזרה
         pendingReorderRef.current = true;
         setTimeout(() => { pendingReorderRef.current = false; }, 2000);
         
         onReorderDepartments(reordered.map((d, i) => ({ id: d.id, sort_order: i })));
-        setTimeout(() => {
-          document.getElementById(`dept-wrapper-${aId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 150);
       }
       return;
     }
 
-    // סידור פריטים
     let foundDeptName: string | null = null;
     for (const [name, items] of Object.entries(localRecurring)) {
       if (items.some((p) => p.id === activeStr)) { foundDeptName = name; break; }
@@ -243,7 +245,6 @@ export function PantryCheckView({
         const reordered = arrayMove(items, oldIndex, newIndex);
         setLocalRecurring(prev => ({ ...prev, [foundDeptName as string]: reordered }));
         
-        // נעילת רענון כדי למנוע קפיצה חזרה
         pendingReorderRef.current = true;
         setTimeout(() => { pendingReorderRef.current = false; }, 2000);
 
@@ -341,8 +342,10 @@ export function PantryCheckView({
             </SortableContext>
           </div>
 
+          {/* Drag Overlay: מטפל גם במחלקות וגם בפריטים בודדים */}
           <DragOverlay dropAnimation={{ sideEffects: defaultDropAnimationSideEffects({ styles: { active: { opacity: "0.4" } } }) }}>
             {activeDept && activeDeptConfig ? (
+              // תצוגת מחלקה נגררת
               <div className="w-full flex justify-center opacity-100 drop-shadow-2xl">
                 <div className="w-full max-w-[calc(100vw-20px)] md:max-w-[calc(100vw-32px)]">
                   <div className={`bg-white rounded-2xl shadow-sm border border-slate-100 border-r-8 ${activeDeptConfig.border}`}>
@@ -361,6 +364,22 @@ export function PantryCheckView({
                       </div>
                       <div className="p-3 text-slate-300 shrink-0">
                         <ChevronDown className="h-5 w-5" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : activeProduct ? (
+              // תצוגת מוצר נגרר (חדש!)
+              <div className="opacity-100 drop-shadow-xl scale-[1.02]">
+                <div className={`flex items-center justify-between rounded-xl px-4 py-3 border ${activeProduct.current_stock === 0 ? "bg-red-50 border-red-200" : "bg-white border-slate-200"}`}>
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="text-indigo-500 cursor-grabbing p-1"><GripVertical className="h-5 w-5" /></div>
+                    <div className="flex flex-col text-right">
+                      <span className="text-[1.05rem] font-medium text-slate-800">{activeProduct.product_name}</span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-primary font-bold">{activeProduct.base_quantity} {activeProduct.unit || "יחידות"}</span>
+                        {isLactoseFree(activeProduct.product_name) && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">ללא לקטוז</span>}
                       </div>
                     </div>
                   </div>
