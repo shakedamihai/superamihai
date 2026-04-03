@@ -2,7 +2,7 @@ import {
   Copy, CheckCircle2, ChevronDown, Trash2, Check, Search, X, Zap,
   Beef, Carrot, Milk, Snowflake, Sparkles, Wheat, CupSoda, Baby, ShoppingBag, 
   Apple, Fish, Package, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy,
-  CookingPot, Grape // האייקונים שסיכמנו עליהם
+  CookingPot, Grape 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
