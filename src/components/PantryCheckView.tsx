@@ -125,7 +125,7 @@ export function PantryCheckView({
                   {products.map((product) => (
                     <div 
                       key={product.id} 
-                      className="flex items-center justify-between px-5 py-4 border-b border-slate-200 last:border-0 hover:bg-slate-50/30 transition-colors"
+                      className="flex items-center justify-between px-5 py-4 border-b border-slate-300 last:border-0 hover:bg-slate-50/30 transition-colors"
                     >
                       <div className="flex flex-col gap-1 flex-1">
                         <div className="flex items-center gap-2 justify-start">
