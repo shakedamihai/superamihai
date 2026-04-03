@@ -2,7 +2,6 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Pencil, Trash2, Plus, Minus, MoreVertical, Ban } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
-import { isLactoseFree } from "@/hooks/useDepartments";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import {
@@ -37,7 +36,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     position: 'relative' as const,
   };
 
-  // פונקציה חכמה לתיקון שמות יחידות והפיכתן לרבים
   const displayUnit = (u?: string) => {
     if (!u || u.trim() === "") return "יחידות";
     const lowerUnit = u.toLowerCase().trim();
@@ -45,11 +43,10 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     if (lowerUnit === "חבילה") return "חבילות";
     if (lowerUnit === "מארז") return "מארזים";
     if (lowerUnit === "ליטר") return "ליטרים";
-    return u; // מחזיר את המקור אם לא נדרש שינוי
+    return u;
   };
 
   const formattedUnit = displayUnit(product.unit);
-  const lactoseFree = isLactoseFree(product.product_name);
   const isOutOfStock = localStock === 0;
 
   const getStep = (u?: string) => {
@@ -67,7 +64,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     onUpdateStock(product.id, validVal);
   };
 
-  // תווית הסטטוס (כבר לא כוללת את שם היחידה, כי הוא מופיע בתווית הראשונה)
   const getStockBadge = () => {
     if (localStock === 0) {
       return <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold shrink-0">חסר במלאי</span>;
@@ -90,7 +86,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
         isOutOfStock ? "bg-red-50/40 border-red-100" : "bg-white border-slate-100 shadow-sm"
       }`}
     >
-      {/* צד ימין: גרירה, שם ותגים */}
       <div className="flex items-center gap-2 flex-1 overflow-hidden">
         <div
           className="text-slate-300 hover:text-indigo-400 cursor-grab active:cursor-grabbing p-1 touch-none shrink-0"
@@ -106,24 +101,15 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
           </span>
           
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {/* תווית ראשונה מימין: כמות ויחידה (תמיד מופיעה) */}
             <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold shrink-0">
               {product.base_quantity} {formattedUnit}
             </span>
-            
-            {/* תווית שנייה: סטטוס המלאי */}
             {getStockBadge()}
-            
-            {/* תווית שלישית (אופציונלית) */}
-            {lactoseFree && <span className="text-[9px] bg-sky-50 text-sky-700 px-1 py-0.5 rounded font-bold border border-sky-100">ללא לקטוז</span>}
           </div>
         </div>
       </div>
 
-      {/* צד שמאל: פלוס מינוס ותפריט שלוש נקודות */}
       <div className="flex items-center gap-2 shrink-0 pl-1">
-        
-        {/* פלוס מינוס קומפקטי */}
         <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg h-8 overflow-hidden">
           <button 
             onClick={() => handleStockChange(localStock - step)}
@@ -145,7 +131,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
           </button>
         </div>
 
-        {/* תפריט שלוש נקודות */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="text-slate-400 p-1.5 hover:bg-slate-100 rounded-lg transition-all outline-none">
@@ -153,7 +138,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-56 font-sans p-1.5 rounded-xl shadow-xl border-slate-100">
-            
             {!isOutOfStock && (
               <>
                 <DropdownMenuItem 
@@ -171,20 +155,16 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
                 <DropdownMenuSeparator className="bg-slate-50" />
               </>
             )}
-
             <DropdownMenuItem onClick={onEdit} className="flex items-center justify-end gap-2 p-2 focus:bg-indigo-50 focus:text-indigo-600 font-bold rounded-lg cursor-pointer">
               <span>עריכת המוצר</span>
               <Pencil className="h-4 w-4" />
             </DropdownMenuItem>
-
             <DropdownMenuItem onClick={onDelete} className="flex items-center justify-end gap-2 p-2 focus:bg-red-50 focus:text-red-600 font-bold rounded-lg cursor-pointer">
               <span>מחיקת המוצר</span>
               <Trash2 className="h-4 w-4" />
             </DropdownMenuItem>
-            
           </DropdownMenuContent>
         </DropdownMenu>
-
       </div>
     </div>
   );
