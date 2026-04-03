@@ -232,7 +232,7 @@ export function ShoppingListView({
                           <div className="flex flex-col text-right flex-1 overflow-hidden">
                             <div className="flex items-baseline gap-2 overflow-hidden">
                               <span className={`text-[1rem] font-bold truncate ${isChecked ? "line-through text-muted-foreground" : "text-slate-800"}`}>{merged.product_name}</span>
-                              <span className={`text-xs font-black shrink-0 ${isChecked ? "opacity-30" : "text-primary"}`}>({merged.totalQty} {unitLabel})</span>
+                              <span className={`text-[1rem] font-black shrink-0 ${isChecked ? "opacity-30" : "text-primary"}`}>({merged.totalQty} {unitLabel})</span>
                             </div>
                             {(tags.length > 0 || merged.is_one_time_only || (merged.has_one_time_extra && !merged.is_one_time_only)) && (
                               <div className="flex items-center gap-1 mt-0.5 flex-wrap">
