@@ -16,10 +16,8 @@ interface SortableProductRowProps {
 export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }: SortableProductRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
 
-  // סטייט מקומי לעדכון מיידי על המסך (ללא המתנה למסד הנתונים)
   const [localStock, setLocalStock] = useState(product.current_stock ?? 0);
 
-  // סנכרון במקרה שהנתון מתעדכן מבחוץ
   useEffect(() => {
     setLocalStock(product.current_stock ?? 0);
   }, [product.current_stock]);
@@ -32,6 +30,15 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     position: 'relative' as const,
   };
 
+  // פונקציה פנימית לניקוי והצגת יחידות מידה בצורה מקצועית
+  const displayUnit = (u?: string) => {
+    if (!u || u.trim() === "") return "יחידות";
+    const lowerUnit = u.toLowerCase();
+    if (lowerUnit.includes("קילו") || lowerUnit === 'ק"ג') return 'ק"ג';
+    return u;
+  };
+
+  const formattedUnit = displayUnit(product.unit);
   const lactoseFree = isLactoseFree(product.product_name);
   const isOutOfStock = localStock === 0;
 
@@ -44,11 +51,10 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
   };
   const step = getStep(product.unit);
 
-  // פונקציית עדכון שמשנה קודם את המסך, ורק אז שולחת לשרת
   const handleStockChange = (newVal: number) => {
     const validVal = Math.max(0, newVal);
-    setLocalStock(validVal); // עדכון מיידי של הממשק
-    onUpdateStock(product.id, validVal); // עדכון ברקע
+    setLocalStock(validVal);
+    onUpdateStock(product.id, validVal);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -60,7 +66,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     }
   };
 
-  // אלגוריתם תצוגת המלאי החכמה
   const getStockBadge = () => {
     if (localStock === 0) {
       return <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold shrink-0">חסר במלאי</span>;
@@ -68,10 +73,9 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     if (localStock >= (product.base_quantity || 1)) {
       return <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold shrink-0">במלאי</span>;
     }
-    // תצוגת מלאי חלקי מפורטת (לפי הבקשה שלך)
     return (
       <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold shrink-0">
-        {localStock} מתוך {product.base_quantity} {product.unit || "יחידות"} במלאי
+        {localStock} מתוך {product.base_quantity} {formattedUnit} במלאי
       </span>
     );
   };
@@ -82,7 +86,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
       style={style}
       className={`flex items-center justify-between rounded-xl px-3 py-3 border transition-colors ${isOutOfStock ? "bg-red-50 border-red-100" : "bg-white border-slate-100 shadow-sm"}`}
     >
-      {/* צד ימין: ידית גרירה ופרטי המוצר */}
       <div className="flex items-center gap-2 flex-1 overflow-hidden">
         <div
           className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing p-1 touch-none shrink-0"
@@ -97,7 +100,7 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
           </span>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
             <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
-              {product.base_quantity} {product.unit || "יחידות"}
+              {product.base_quantity} {formattedUnit}
             </span>
             {getStockBadge()}
             {lactoseFree && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold shrink-0">ללא לקטוז</span>}
@@ -105,10 +108,7 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
         </div>
       </div>
 
-      {/* צד שמאל: כפתורים והזנת מלאי */}
       <div className="flex items-center gap-1.5 shrink-0 pl-1">
-        
-        {/* שדה הזנת מלאי עם פלוס ומינוס */}
         <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg h-9 overflow-hidden">
           <button 
             onClick={() => handleStockChange(localStock - step)}
@@ -130,7 +130,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
           </button>
         </div>
 
-        {/* כפתור "סמן כחסר" בצבע אפור/ניטרלי */}
         {!isOutOfStock && (
           <Button
             size="sm"
