@@ -1,12 +1,12 @@
 import { 
-  Copy, CheckCircle2, ChevronDown, Trash2, Check, Search, X, Zap,
+  Copy, CheckCircle2, ChevronDown, Trash2, Check, Search, Zap,
   Beef, Carrot, Milk, Snowflake, Sparkles, Wheat, CupSoda, Baby, ShoppingBag, 
   Apple, Fish, Package, ChefHat, Leaf, Droplets, UtensilsCrossed, Candy,
   CookingPot, Grape 
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Product } from "@/hooks/useProducts";
+import type { Product } from "@/hooks/useProducts";
 import { useDepartments } from "@/hooks/useDepartments";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState, useMemo } from "react";
@@ -93,7 +93,6 @@ export function ShoppingListView({
   const [checked, setChecked] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<MergedProduct | null>(null);
 
-  const isSearching = searchQuery.length > 0;
   const lowerQuery = searchQuery.toLowerCase();
 
   const confirmDelete = () => {
@@ -116,19 +115,13 @@ export function ShoppingListView({
 
   const filteredDepts = useMemo(() => {
     const keys = Object.keys(shoppingByDepartment).sort((a, b) => {
-      const deptA = departments.find(d => d.name === a);
-      const deptB = departments.find(d => d.name === b);
+      const deptA = (departments || []).find(d => d.name === a);
+      const deptB = (departments || []).find(d => d.name === b);
       return (deptA ? deptA.sort_order : 999) - (deptB ? deptB.sort_order : 999);
     });
     if (!searchQuery) return keys;
     return keys.filter(dept => dept.toLowerCase().includes(lowerQuery) || (shoppingByDepartment[dept] || []).some(p => p.product_name?.toLowerCase().includes(lowerQuery)));
   }, [shoppingByDepartment, searchQuery, lowerQuery, departments]);
-
-  const totalMergedItems = useMemo(() => {
-    let count = 0;
-    Object.values(shoppingByDepartment).forEach(items => count += new Set(items.map(i => i.product_name.trim().toLowerCase())).size);
-    return count;
-  }, [shoppingByDepartment]);
 
   const checkedMergedItems = useMemo(() => {
     let count = 0;
@@ -163,7 +156,7 @@ export function ShoppingListView({
             <Search className="absolute right-4 top-3.5 h-5 w-5 text-slate-400" />
             <Input placeholder="חיפוש..." className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
-          {!isSearching && (
+          {searchQuery.length === 0 && (
             <div className="space-y-4">
               <div className="flex gap-2">
                 <Button onClick={onCopyList} variant="outline" className="flex-1 gap-2 rounded-xl h-12 border-slate-200 font-bold text-slate-700"><Copy className="h-4 w-4" /> העתק</Button>
@@ -171,8 +164,8 @@ export function ShoppingListView({
                   <AlertDialogTrigger asChild>
                     <Button className="flex-1 gap-2 rounded-xl h-12 font-bold" disabled={isFinishing || checked.size === 0}><CheckCircle2 className="h-4 w-4" /> סיום ({checkedMergedItems})</Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent className="rounded-3xl p-6 font-sans">
-                    <AlertDialogHeader><AlertDialogTitle className="text-right">סיימת לקנות?</AlertDialogTitle></AlertDialogHeader>
+                  <AlertDialogContent className="rounded-3xl p-6 font-sans text-right">
+                    <AlertDialogHeader><AlertDialogTitle>סיימת לקנות?</AlertDialogTitle></AlertDialogHeader>
                     <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
                       <AlertDialogAction className="rounded-xl px-6 py-5 bg-indigo-600 text-white font-bold" onClick={() => {
                         const regularIds = new Set<string>();
@@ -196,7 +189,7 @@ export function ShoppingListView({
       <div className="flex flex-col gap-3">
         {filteredDepts.map((deptName) => {
           const rawItems = shoppingByDepartment[deptName];
-          const filteredRaw = isSearching ? (deptName.toLowerCase().includes(lowerQuery) ? rawItems : rawItems.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))) : rawItems;
+          const filteredRaw = searchQuery.length > 0 ? (deptName.toLowerCase().includes(lowerQuery) ? rawItems : rawItems.filter(p => p.product_name?.toLowerCase().includes(lowerQuery))) : rawItems;
           const mergedMap = new Map<string, MergedProduct>();
           filteredRaw.forEach(p => {
             const key = p.product_name.trim().toLowerCase();
@@ -208,7 +201,7 @@ export function ShoppingListView({
           const Icon = config.icon;
 
           return (
-            <Collapsible key={deptName} open={isSearching ? true : (openDepts[deptName] !== false)} onOpenChange={(o) => setOpenDepts(p => ({ ...p, [deptName]: o }))} className={`bg-white rounded-2xl shadow-sm border border-border border-r-8 ${config.border}`}>
+            <Collapsible key={deptName} open={searchQuery.length > 0 ? true : (openDepts[deptName] !== false)} onOpenChange={(o) => setOpenDepts(p => ({ ...p, [deptName]: o }))} className={`bg-white rounded-2xl shadow-sm border border-border border-r-8 ${config.border}`}>
               <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-4 font-bold outline-none">
                 <div className="flex items-center gap-3">
                   <div className="p-1.5 rounded-lg bg-slate-50"><Icon className={`h-4 w-4 ${config.color}`} /></div>
@@ -217,7 +210,7 @@ export function ShoppingListView({
                 <ChevronDown className={`h-4 w-4 text-slate-300 transition-transform ${openDepts[deptName] !== false ? "rotate-180" : ""}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="px-2 pb-2">
-                <div className="flex flex-col gap-1.5 border-t border-border/50 pt-2">
+                <div className="flex flex-col gap-1.5 border-t border-border/50 pt-2 text-right">
                   {Array.from(mergedMap.values()).map((merged) => {
                     const isChecked = merged.ids.every(id => checked.has(id));
                     const unitLabel = formatUnit(merged.unit);
@@ -229,8 +222,8 @@ export function ShoppingListView({
                           const n = new Set(checked); if (isChecked) merged.ids.forEach(id => n.delete(id)); else merged.ids.forEach(id => n.add(id)); setChecked(n);
                         }}>
                           <div className={`w-5 h-5 rounded-full flex items-center justify-center border-2 shrink-0 ${isChecked ? "bg-primary border-primary text-white" : "bg-white border-muted-foreground/30"}`}>{isChecked && <Check className="h-3 w-3" strokeWidth={3} />}</div>
-                          <div className="flex flex-col text-right flex-1 overflow-hidden">
-                            <div className="flex items-baseline gap-2 overflow-hidden">
+                          <div className="flex flex-col flex-1 overflow-hidden">
+                            <div className="flex items-baseline gap-2 overflow-hidden justify-start">
                               <span className={`text-[1rem] font-bold truncate ${isChecked ? "line-through text-muted-foreground" : "text-slate-800"}`}>{merged.product_name}</span>
                               <span className={`text-[1rem] font-black shrink-0 ${isChecked ? "opacity-30" : "text-primary"}`}>({merged.totalQty} {unitLabel})</span>
                             </div>
@@ -255,10 +248,10 @@ export function ShoppingListView({
       </div>
 
       <AlertDialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
-        <AlertDialogContent className="rounded-3xl p-6 font-sans">
+        <AlertDialogContent className="rounded-3xl p-6 font-sans text-right">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-right">{dialogContent.title}</AlertDialogTitle>
-            <AlertDialogDescription className="text-right mt-2">{dialogContent.desc}</AlertDialogDescription>
+            <AlertDialogTitle>{dialogContent.title}</AlertDialogTitle>
+            <AlertDialogDescription className="mt-2">{dialogContent.desc}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
             <AlertDialogAction className="rounded-xl px-6 py-5 bg-red-500 font-bold" onClick={confirmDelete}>{dialogContent.btn}</AlertDialogAction>
