@@ -1,6 +1,6 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Pencil, Trash2, Plus, Minus, MoreHorizontal, RotateCcw } from "lucide-react";
+import { GripVertical, Pencil, Trash2, Plus, Minus, MoreVertical, Ban } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { isLactoseFree } from "@/hooks/useDepartments";
 import { Button } from "@/components/ui/button";
@@ -9,9 +9,8 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 interface SortableProductRowProps {
@@ -66,13 +65,13 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
 
   const getStockBadge = () => {
     if (localStock === 0) {
-      return <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold">חסר</span>;
+      return <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold shrink-0">חסר במלאי</span>;
     }
     if (localStock >= (product.base_quantity || 1)) {
-      return <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold">במלאי</span>;
+      return <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold shrink-0">במלאי</span>;
     }
     return (
-      <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold">
+      <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold shrink-0">
         {localStock}/{product.base_quantity} {formattedUnit}
       </span>
     );
@@ -82,39 +81,39 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center justify-between rounded-xl px-2 py-3 border transition-all ${
+      className={`flex items-center justify-between rounded-xl px-3 py-2.5 border transition-colors ${
         isOutOfStock ? "bg-red-50/40 border-red-100" : "bg-white border-slate-100 shadow-sm"
       }`}
     >
       {/* צד ימין: גרירה, שם ותגים */}
-      <div className="flex items-center gap-1.5 flex-1 min-w-0 pr-1">
+      <div className="flex items-center gap-2 flex-1 overflow-hidden">
         <div
           className="text-slate-300 hover:text-indigo-400 cursor-grab active:cursor-grabbing p-1 touch-none shrink-0"
           {...attributes}
           {...listeners}
         >
-          <GripVertical className="h-4 w-4" />
+          <GripVertical className="h-5 w-5" />
         </div>
         
-        <div className="flex flex-col text-right min-w-0">
-          <span className={`text-sm font-bold truncate ${isOutOfStock ? "text-red-700" : "text-slate-800"}`}>
+        <div className="flex flex-col text-right flex-1 overflow-hidden">
+          <span className={`text-[0.95rem] font-bold truncate leading-tight ${isOutOfStock ? "text-red-700" : "text-slate-800"}`}>
             {product.product_name}
           </span>
-          <div className="flex items-center gap-1 mt-0.5 overflow-hidden">
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             {getStockBadge()}
-            {lactoseFree && <span className="text-[9px] bg-sky-50 text-sky-700 px-1 rounded font-bold border border-sky-100 shrink-0">ללא לקטוז</span>}
+            {lactoseFree && <span className="text-[9px] bg-sky-50 text-sky-700 px-1 py-0.5 rounded font-bold border border-sky-100">ללא לקטוז</span>}
           </div>
         </div>
       </div>
 
-      {/* צד שמאל: פקדים ו-3 נקודות */}
-      <div className="flex items-center gap-1.5 shrink-0 pl-1">
+      {/* צד שמאל: פלוס מינוס ותפריט שלוש נקודות */}
+      <div className="flex items-center gap-2 shrink-0 pl-1">
         
         {/* פלוס מינוס קומפקטי */}
         <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg h-8 overflow-hidden">
           <button 
             onClick={() => handleStockChange(localStock - step)}
-            className="px-1.5 h-full text-slate-400 hover:bg-slate-200"
+            className="px-1.5 h-full text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors border-l border-slate-200"
           >
             <Minus className="h-3 w-3" />
           </button>
@@ -126,44 +125,49 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
           />
           <button 
             onClick={() => handleStockChange(localStock + step)}
-            className="px-1.5 h-full text-slate-400 hover:bg-slate-200"
+            className="px-1.5 h-full text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors border-r border-slate-200"
           >
             <Plus className="h-3 w-3" />
           </button>
         </div>
 
-        {/* תפריט 3 נקודות עם כל ההסברים */}
+        {/* תפריט שלוש נקודות */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="p-1.5 text-slate-400 hover:bg-slate-50 rounded-lg transition-colors">
-              <MoreHorizontal className="h-5 w-5" />
+            <button className="text-slate-400 p-1.5 hover:bg-slate-100 rounded-lg transition-all">
+              <MoreVertical className="h-5 w-5" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 font-sans">
-            <DropdownMenuLabel className="text-right text-xs text-slate-500">אפשרויות מוצר</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+          <DropdownMenuContent align="end" className="w-56 font-sans p-1.5 rounded-xl shadow-xl border-slate-100">
             
-            <DropdownMenuItem onClick={() => handleStockChange(0)} className="flex flex-col items-end gap-0.5 cursor-pointer">
-              <div className="flex items-center gap-2 text-slate-700 font-bold">
-                <span>סמן כחסר</span>
-                <RotateCcw className="h-4 w-4" />
-              </div>
-              <span className="text-[10px] text-slate-400 text-right leading-tight">
-                מאפס את המלאי ומוסיף את המוצר לרשימת הקניות
-              </span>
-            </DropdownMenuItem>
+            {!isOutOfStock && (
+              <>
+                <DropdownMenuItem 
+                  onClick={() => handleStockChange(0)}
+                  className="flex flex-col items-end gap-1 p-2 focus:bg-slate-50 cursor-pointer rounded-lg group"
+                >
+                  <div className="flex items-center gap-2 text-slate-700 font-bold group-hover:text-indigo-600 transition-colors">
+                    <span>סמן כחסר</span>
+                    <Ban className="h-4 w-4" />
+                  </div>
+                  <span className="text-[10px] text-slate-400 text-right leading-tight">
+                    מאפס את המלאי ומוסיף את המוצר לרשימת הקניות
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator className="bg-slate-50" />
+              </>
+            )}
 
-            <DropdownMenuSeparator />
-
-            <DropdownMenuItem onClick={onEdit} className="flex items-center justify-end gap-2 cursor-pointer font-medium">
+            <DropdownMenuItem onClick={onEdit} className="flex items-center justify-end gap-2 p-2 focus:bg-indigo-50 focus:text-indigo-600 font-bold rounded-lg cursor-pointer">
               <span>עריכת המוצר</span>
-              <Pencil className="h-4 w-4 text-slate-500" />
+              <Pencil className="h-4 w-4" />
             </DropdownMenuItem>
 
-            <DropdownMenuItem onClick={onDelete} className="flex items-center justify-end gap-2 cursor-pointer text-red-600 font-medium">
+            <DropdownMenuItem onClick={onDelete} className="flex items-center justify-end gap-2 p-2 focus:bg-red-50 focus:text-red-600 font-bold rounded-lg cursor-pointer">
               <span>מחיקת המוצר</span>
               <Trash2 className="h-4 w-4" />
             </DropdownMenuItem>
+            
           </DropdownMenuContent>
         </DropdownMenu>
 
