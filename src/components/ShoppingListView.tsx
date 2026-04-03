@@ -18,9 +18,9 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "מוצרי חלב ומקרר": { icon: Milk, color: "text-blue-500", border: "border-r-blue-500" },
   "קצביה": { icon: Beef, color: "text-red-500", border: "border-r-red-500" },
   "דגים": { icon: Fish, color: "text-cyan-500", border: "border-r-cyan-500" },
-  "קפואים": { icon: Snowflake, color: "text-indigo-600", border: "border-r-indigo-600" }, // כחול כהה
+  "קפואים": { icon: Snowflake, color: "text-indigo-600", border: "border-r-indigo-600" },
   "מזווה ושימורים": { icon: Package, color: "text-orange-500", border: "border-r-orange-500" },
-  "תבלינים ואפייה": { icon: CookingPot, color: "text-amber-700", border: "border-r-amber-700" }, // סיר פתוח
+  "תבלינים ואפייה": { icon: CookingPot, color: "text-stone-600", border: "border-r-stone-600" }, // צבע אבן מובדל לגמרי
   "מאפייה ולחם": { icon: Wheat, color: "text-yellow-500", border: "border-r-yellow-500" },
   "חטיפים ומתוקים": { icon: Candy, color: "text-purple-500", border: "border-r-purple-500" },
   "משקאות": { icon: CupSoda, color: "text-indigo-500", border: "border-r-indigo-500" },
@@ -28,7 +28,7 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "חומרי ניקוי": { icon: Droplets, color: "text-slate-500", border: "border-r-slate-500" },
   "חד-פעמי": { icon: UtensilsCrossed, color: "text-rose-400", border: "border-r-rose-400" },
   "תינוקות": { icon: Baby, color: "text-teal-500", border: "border-r-teal-500" },
-  "פיצוחים ופירות יבשים": { icon: Grape, color: "text-orange-800", border: "border-r-orange-800" }, // ענבים בצבע חום-צימוק
+  "פיצוחים ופירות יבשים": { icon: Grape, color: "text-amber-700", border: "border-r-amber-700" }, // צבע חום-כתום (הצבע הקודם של תבלינים)
   "מעדניה": { icon: ChefHat, color: "text-violet-600", border: "border-r-violet-600" },
   "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
   "כללי": { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-400" },
