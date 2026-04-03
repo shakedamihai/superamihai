@@ -16,10 +16,8 @@ interface SortableProductRowProps {
 export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }: SortableProductRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
 
-  // סטייט מקומי לעדכון מיידי על המסך (Optimistic UI)
   const [localStock, setLocalStock] = useState(product.current_stock ?? 0);
 
-  // סנכרון במקרה שהנתון מתעדכן מבחוץ
   useEffect(() => {
     setLocalStock(product.current_stock ?? 0);
   }, [product.current_stock]);
@@ -54,8 +52,8 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
 
   const handleStockChange = (newVal: number) => {
     const validVal = Math.max(0, newVal);
-    setLocalStock(validVal); // עדכון מיידי של הממשק
-    onUpdateStock(product.id, validVal); // עדכון ברקע
+    setLocalStock(validVal);
+    onUpdateStock(product.id, validVal);
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -85,80 +83,82 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex rounded-xl px-3 py-3 border transition-colors md:items-center ${isOutOfStock ? "bg-red-50 border-red-100" : "bg-white border-slate-100 shadow-sm"}`}
+      className={`flex flex-col gap-3 rounded-xl px-3 py-3 border transition-colors ${isOutOfStock ? "bg-red-50/70 border-red-200" : "bg-white border-slate-100 shadow-sm"}`}
     >
-      {/* פריסה למובייל: הכל מיושר לימין בצורה אחידה */}
-      <div className="flex flex-col gap-3.5 w-full md:flex-row md:items-center md:justify-between md:gap-0">
-        
-        {/* שורה 1: שם המוצר והתגיות - מיושר לימין */}
-        <div className="flex items-start gap-2 flex-1 overflow-hidden pr-1 md:items-center md:pr-0">
-          <div
-            className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing p-1.5 touch-none shrink-0 md:p-1 mt-1 md:mt-0"
-            {...attributes}
-            {...listeners}
-            title="גרור לשינוי סדר"
-          >
-            <GripVertical className="h-5 w-5 md:h-4 md:w-4" />
-          </div>
-          <div className="flex flex-col text-right flex-1 overflow-hidden">
-            <span className={`text-[1.05rem] font-medium truncate md:text-sm ${isOutOfStock ? "text-red-700 font-bold" : "text-slate-800"}`}>
-              {product.product_name}
+      {/* שורה 1: שם ותגיות - יישור לימין */}
+      <div className="flex items-start gap-2 w-full overflow-hidden">
+        <div
+          className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing p-1.5 touch-none shrink-0"
+          {...attributes}
+          {...listeners}
+        >
+          <GripVertical className="h-5 w-5" />
+        </div>
+        <div className="flex flex-col text-right flex-1 overflow-hidden">
+          <span className={`text-[1.05rem] font-bold truncate ${isOutOfStock ? "text-red-900" : "text-slate-800"}`}>
+            {product.product_name}
+          </span>
+          <div className="flex items-center gap-2 mt-1 flex-wrap">
+            <span className="text-[11px] text-slate-500 font-bold whitespace-nowrap bg-slate-100 px-1.5 py-0.5 rounded">
+               {product.base_quantity} {formattedUnit}
             </span>
-            <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-              <span className="text-xs text-slate-500 font-medium whitespace-nowrap md:text-[11px]">
-                {product.base_quantity} {formattedUnit}
-              </span>
-              {getStockBadge()}
-              {lactoseFree && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold shrink-0 md:text-[9px]">ללא לקטוז</span>}
-            </div>
+            {getStockBadge()}
+            {lactoseFree && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">ללא לקטוז</span>}
           </div>
         </div>
+      </div>
 
-        {/* שורה 2: אזור פקדים מוגדר - מעכשיו גם במובייל זה אופקי למטה ומיושר לימין */}
-        <div className="flex items-center gap-1.5 justify-end border-t border-slate-100/50 pt-3 md:border-t-0 md:pt-0 md:gap-1.5 shrink-0 pl-1">
-          
-          {/* פקדי עריכה/מחיקה */}
-          <button onClick={onEdit} className="text-slate-400 p-2 hover:text-indigo-600 rounded-lg transition-colors md:p-1.5"><Pencil className="h-4 w-4 md:h-3.5 md:w-3.5" /></button>
-          <button onClick={onDelete} className="text-slate-400 p-2 hover:text-red-500 rounded-lg transition-colors md:p-1.5"><Trash2 className="h-4 w-4 md:h-3.5 md:w-3.5" /></button>
-          
-          {/* מפריד עדין */}
-          <div className="h-6 w-px bg-slate-100/50 mx-1 md:hidden" />
+      {/* שורה 2: פקדים - מבנה קבוע למניעת קפיצות */}
+      <div className="flex items-center justify-between border-t border-slate-200/50 pt-3 w-full">
+        
+        {/* צד ימין: פלוס ומינוס (תמיד כאן) */}
+        <div className="flex items-center bg-white border border-slate-200 rounded-lg h-9 overflow-hidden shadow-sm">
+          <button 
+            onClick={() => handleStockChange(localStock - step)}
+            className="px-2.5 h-full text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+          >
+            <Minus className="h-3.5 w-3.5" />
+          </button>
+          <input 
+            type="number" 
+            value={localStock} 
+            onChange={handleInputChange}
+            className="w-10 text-center font-black text-sm bg-transparent border-none p-0 focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          />
+          <button 
+            onClick={() => handleStockChange(localStock + step)}
+            className="px-2.5 h-full text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+          >
+            <Plus className="h-3.5 w-3.5" />
+          </button>
+        </div>
 
-          {/* כפתור "סמן כחסר" - חזר להיות בטקסט מלא גם במובייל */}
-          {!isOutOfStock && (
+        {/* מרכז: כפתור חסר (אם חסר, המקום נשמר ריק כדי לא להזיז את השאר) */}
+        <div className="flex-1 flex justify-center px-2">
+          {!isOutOfStock ? (
             <Button
               size="sm"
               variant="outline"
-              className="h-9 px-3 text-[11px] font-bold border-slate-200 text-slate-600 hover:bg-slate-100 hover:text-slate-800 md:h-7 md:px-2 md:text-[10px]"
+              className="h-9 px-3 text-[11px] font-bold border-slate-200 text-slate-500 bg-slate-50/50 hover:bg-white hover:text-slate-800 transition-all"
               onClick={() => handleStockChange(0)}
             >
               סמן כחסר
             </Button>
+          ) : (
+            <div className="h-9" /> // שומר מקום ריק
           )}
-
-          {/* שדה הזנת מלאי עם פלוס ומינוס */}
-          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg h-9 overflow-hidden md:h-7">
-            <button 
-              onClick={() => handleStockChange(localStock - step)}
-              className="px-2.5 h-full text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors md:px-1.5"
-            >
-              <Minus className="h-4 w-4 md:h-3 md:w-3" />
-            </button>
-            <input 
-              type="number" 
-              value={localStock} 
-              onChange={handleInputChange}
-              className="w-12 text-center font-bold text-sm bg-transparent border-none p-0 focus:ring-0 md:w-8 md:text-xs [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-            />
-            <button 
-              onClick={() => handleStockChange(localStock + step)}
-              className="px-2.5 h-full text-slate-500 hover:bg-slate-200 hover:text-slate-800 transition-colors md:px-1.5"
-            >
-              <Plus className="h-4 w-4 md:h-3 md:w-3" />
-            </button>
-          </div>
-
         </div>
+
+        {/* צד שמאל: עריכה ומחיקה */}
+        <div className="flex items-center gap-1">
+          <button onClick={onEdit} className="text-slate-400 p-2 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors">
+            <Pencil className="h-4 w-4" />
+          </button>
+          <button onClick={onDelete} className="text-slate-400 p-2 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors">
+            <Trash2 className="h-4 w-4" />
+          </button>
+        </div>
+
       </div>
     </div>
   );
