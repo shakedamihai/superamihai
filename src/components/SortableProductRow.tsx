@@ -2,7 +2,6 @@ import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Pencil, Trash2, Plus, Minus, MoreVertical, Ban } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
-import { isLactoseFree } from "@/hooks/useDepartments";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
 import {
@@ -45,7 +44,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
   };
 
   const formattedUnit = displayUnit(product.unit);
-  const lactoseFree = isLactoseFree(product.product_name);
   const isOutOfStock = localStock === 0;
 
   const getStep = (u?: string) => {
@@ -63,20 +61,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     onUpdateStock(product.id, validVal);
   };
 
-  const getStockBadge = () => {
-    if (localStock === 0) {
-      return <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold shrink-0">חסר במלאי</span>;
-    }
-    if (localStock >= (product.base_quantity || 1)) {
-      return <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded font-bold shrink-0">במלאי</span>;
-    }
-    return (
-      <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold shrink-0">
-        {localStock}/{product.base_quantity} {formattedUnit}
-      </span>
-    );
-  };
-
   return (
     <div
       ref={setNodeRef}
@@ -85,7 +69,7 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
         isOutOfStock ? "bg-red-50/40 border-red-100" : "bg-white border-slate-100 shadow-sm"
       }`}
     >
-      {/* צד ימין: גרירה, שם ותגים */}
+      {/* צד ימין: גרירה ושם המוצר עם תוויות נקיות */}
       <div className="flex items-center gap-2 flex-1 overflow-hidden">
         <div
           className="text-slate-300 hover:text-indigo-400 cursor-grab active:cursor-grabbing p-1 touch-none shrink-0"
@@ -100,8 +84,16 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
             {product.product_name}
           </span>
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            {getStockBadge()}
-            {lactoseFree && <span className="text-[9px] bg-sky-50 text-sky-700 px-1 py-0.5 rounded font-bold border border-sky-100">ללא לקטוז</span>}
+             <span className="text-[11px] text-slate-500 font-medium bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                רצוי: {product.base_quantity} {formattedUnit}
+             </span>
+             {isOutOfStock ? (
+                <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold shrink-0">חסר במלאי</span>
+             ) : (
+                <span className="text-[10px] bg-indigo-50 text-indigo-700 border border-indigo-100 px-1.5 py-0.5 rounded font-bold shrink-0">
+                  במלאי: {localStock}
+                </span>
+             )}
           </div>
         </div>
       </div>
@@ -109,7 +101,7 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
       {/* צד שמאל: פלוס מינוס ותפריט שלוש נקודות */}
       <div className="flex items-center gap-2 shrink-0 pl-1">
         
-        {/* פלוס מינוס קומפקטי */}
+        {/* פלוס מינוס */}
         <div className="flex items-center bg-slate-50 border border-slate-200 rounded-lg h-8 overflow-hidden">
           <button 
             onClick={() => handleStockChange(localStock - step)}
@@ -134,17 +126,17 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
         {/* תפריט שלוש נקודות */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="text-slate-400 p-1.5 hover:bg-slate-100 rounded-lg transition-all">
+            <button className="text-slate-400 p-1.5 hover:bg-slate-100 rounded-lg transition-all outline-none">
               <MoreVertical className="h-5 w-5" />
             </button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 font-sans p-1.5 rounded-xl shadow-xl border-slate-100">
+          <DropdownMenuContent align="end" className="w-56 font-sans p-1.5 rounded-xl shadow-xl border-slate-100 z-50">
             
             {!isOutOfStock && (
               <>
                 <DropdownMenuItem 
                   onClick={() => handleStockChange(0)}
-                  className="flex flex-col items-end gap-1 p-2 focus:bg-slate-50 cursor-pointer rounded-lg group"
+                  className="flex flex-col items-end gap-1 p-2 focus:bg-slate-50 cursor-pointer rounded-lg group outline-none"
                 >
                   <div className="flex items-center gap-2 text-slate-700 font-bold group-hover:text-indigo-600 transition-colors">
                     <span>סמן כחסר</span>
@@ -158,12 +150,12 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
               </>
             )}
 
-            <DropdownMenuItem onClick={onEdit} className="flex items-center justify-end gap-2 p-2 focus:bg-indigo-50 focus:text-indigo-600 font-bold rounded-lg cursor-pointer">
+            <DropdownMenuItem onClick={onEdit} className="flex items-center justify-end gap-2 p-2 focus:bg-indigo-50 focus:text-indigo-600 font-bold rounded-lg cursor-pointer outline-none">
               <span>עריכת המוצר</span>
               <Pencil className="h-4 w-4" />
             </DropdownMenuItem>
 
-            <DropdownMenuItem onClick={onDelete} className="flex items-center justify-end gap-2 p-2 focus:bg-red-50 focus:text-red-600 font-bold rounded-lg cursor-pointer">
+            <DropdownMenuItem onClick={onDelete} className="flex items-center justify-end gap-2 p-2 focus:bg-red-50 focus:text-red-600 font-bold rounded-lg cursor-pointer outline-none">
               <span>מחיקת המוצר</span>
               <Trash2 className="h-4 w-4" />
             </DropdownMenuItem>
