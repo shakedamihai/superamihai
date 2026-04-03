@@ -7,7 +7,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Product } from "@/hooks/useProducts";
-import { isLactoseFree, useDepartments } from "@/hooks/useDepartments";
+import { useDepartments } from "@/hooks/useDepartments";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useState, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -20,7 +20,7 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "דגים": { icon: Fish, color: "text-cyan-500", border: "border-r-cyan-500" },
   "קפואים": { icon: Snowflake, color: "text-indigo-600", border: "border-r-indigo-600" },
   "מזווה ושימורים": { icon: Package, color: "text-orange-500", border: "border-r-orange-500" },
-  "תבלינים ואפייה": { icon: CookingPot, color: "text-stone-600", border: "border-r-stone-600" }, // צבע אבן מובדל לגמרי
+  "תבלינים ואפייה": { icon: CookingPot, color: "text-stone-600", border: "border-r-stone-600" },
   "מאפייה ולחם": { icon: Wheat, color: "text-yellow-500", border: "border-r-yellow-500" },
   "חטיפים ומתוקים": { icon: Candy, color: "text-purple-500", border: "border-r-purple-500" },
   "משקאות": { icon: CupSoda, color: "text-indigo-500", border: "border-r-indigo-500" },
@@ -28,7 +28,7 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "חומרי ניקוי": { icon: Droplets, color: "text-slate-500", border: "border-r-slate-500" },
   "חד-פעמי": { icon: UtensilsCrossed, color: "text-rose-400", border: "border-r-rose-400" },
   "תינוקות": { icon: Baby, color: "text-teal-500", border: "border-r-teal-500" },
-  "פיצוחים ופירות יבשים": { icon: Grape, color: "text-amber-700", border: "border-r-amber-700" }, // צבע חום-כתום (הצבע הקודם של תבלינים)
+  "פיצוחים ופירות יבשים": { icon: Grape, color: "text-amber-700", border: "border-r-amber-700" },
   "מעדניה": { icon: ChefHat, color: "text-violet-600", border: "border-r-violet-600" },
   "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
   "כללי": { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-400" },
@@ -50,6 +50,13 @@ const formatUnit = (unit?: string) => {
   if (u.includes("קפסול")) return "קפסולות";
   if (u.includes("גרם") && !u.includes("קילו")) return "גרם";
   return unit;
+};
+
+// פונקציה חכמה שמוצאת כל ביטוי שמתחיל ב"ללא"
+const getFreeFromLabels = (name: string) => {
+  if (!name) return [];
+  const matches = name.match(/ללא\s+[א-ת]+/g);
+  return matches ? Array.from(new Set(matches)) : [];
 };
 
 type MergedProduct = {
@@ -287,12 +294,14 @@ export function ShoppingListView({
                 <div className="flex flex-col gap-2 border-t border-border/50 pt-3">
                   {mergedItems.map((merged) => {
                     const isChecked = merged.ids.every(id => checked.has(id));
-                    const lactoseFree = isLactoseFree(merged.product_name);
+                    
+                    // מציאת התוויות האוטומטיות
+                    const freeFromTags = getFreeFromLabels(merged.product_name);
                     const unitLabel = formatUnit(merged.unit);
 
                     return (
                       <div key={merged.id} className={`flex items-center justify-between rounded-xl px-4 py-3.5 border transition-all ${isChecked ? "bg-muted/40 opacity-50" : "bg-white border-gray-100"}`}>
-                        <div className="flex items-center gap-4 flex-1 cursor-pointer" onClick={() => {
+                        <div className="flex items-center gap-4 flex-1 cursor-pointer overflow-hidden" onClick={() => {
                           const next = new Set(checked);
                           if (isChecked) {
                             merged.ids.forEach(id => next.delete(id));
@@ -301,19 +310,23 @@ export function ShoppingListView({
                           }
                           setChecked(next);
                         }} >
-                          <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${isChecked ? "bg-primary border-primary text-white" : "bg-white border-muted-foreground/30"}`}>{isChecked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}</div>
-                          <div className="flex flex-col text-right">
-                            <span className={`text-[1.05rem] font-medium ${isChecked ? "line-through text-muted-foreground" : ""}`}>{merged.product_name}</span>
-                            <div className="flex items-center gap-2 mt-0.5">
+                          <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 shrink-0 ${isChecked ? "bg-primary border-primary text-white" : "bg-white border-muted-foreground/30"}`}>{isChecked && <Check className="h-3.5 w-3.5" strokeWidth={3} />}</div>
+                          <div className="flex flex-col text-right flex-1 overflow-hidden">
+                            <span className={`text-[1.05rem] font-medium truncate ${isChecked ? "line-through text-muted-foreground" : ""}`}>{merged.product_name}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                               <span className="text-xs text-primary font-bold">{merged.totalQty} {unitLabel}</span>
-                              {lactoseFree && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold">ללא לקטוז</span>}
                               
-                              {merged.is_one_time_only && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">חד-פעמי</span>}
-                              {!merged.is_one_time_only && merged.has_one_time_extra && <span className="flex items-center gap-1 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold"><Zap className="h-3 w-3 fill-amber-700"/> כמות מוגדלת</span>}
+                              {/* הדפסת התוויות הדינמיות */}
+                              {freeFromTags.map(tag => (
+                                <span key={tag} className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-bold border border-sky-100 shrink-0">{tag}</span>
+                              ))}
+                              
+                              {merged.is_one_time_only && <span className="text-[10px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold shrink-0">חד-פעמי</span>}
+                              {!merged.is_one_time_only && merged.has_one_time_extra && <span className="flex items-center gap-1 text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold shrink-0"><Zap className="h-3 w-3 fill-amber-700"/> כמות מוגדלת</span>}
                             </div>
                           </div>
                         </div>
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(merged); }} className="text-muted-foreground/40 p-2 hover:text-red-500 rounded-lg">
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteTarget(merged); }} className="text-muted-foreground/40 p-2 hover:text-red-500 rounded-lg shrink-0">
                           <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
