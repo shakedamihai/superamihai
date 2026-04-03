@@ -83,7 +83,7 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
       ref={setNodeRef}
       style={style}
       className={`flex items-center justify-between rounded-xl px-3 py-2.5 border transition-colors ${
-        isOutOfStock ? "bg-red-50/40 border-red-100" : "bg-white border-slate-100 shadow-sm"
+        isOutOfStock ? "bg-red-50/40 border-red-200" : "bg-white border-slate-100 shadow-sm"
       }`}
     >
       <div className="flex items-center gap-2 flex-1 overflow-hidden">
@@ -96,17 +96,17 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
         </div>
         
         <div className="flex flex-col text-right flex-1 min-w-0 py-0.5">
-          {/* שורה ראשונה: שם וכמות */}
-          <div className="flex items-baseline gap-2 overflow-hidden justify-start">
-            <span className={`text-[0.95rem] font-bold truncate ${isOutOfStock ? "text-red-700" : "text-slate-800"}`}>
+          {/* שורה ראשונה: שם וכמות - ללא חיתוך, כמות מוקטנת באפור */}
+          <div className="flex flex-wrap items-baseline gap-x-1.5 justify-start">
+            <span className="text-[0.95rem] font-bold leading-tight break-words text-slate-800">
               {product.product_name}
             </span>
-            <span className={`text-[0.95rem] font-bold shrink-0 ${isOutOfStock ? "text-red-400" : "text-slate-400"}`}>
+            <span className="text-[0.8rem] font-medium shrink-0 text-slate-500">
               ({product.base_quantity} {formattedUnit})
             </span>
           </div>
           
-          {/* שורה שנייה: תווית סטטוס מלאי */}
+          {/* שורה שנייה: תווית סטטוס מלאי - מופיעה תמיד מתחת לשם */}
           <div className="flex items-center gap-1.5 mt-1 justify-start">
             {getStockBadge()}
           </div>
