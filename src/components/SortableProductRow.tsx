@@ -86,7 +86,7 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
         isOutOfStock ? "bg-red-50/40 border-red-100" : "bg-white border-slate-100 shadow-sm"
       }`}
     >
-      <div className="flex items-center gap-2 flex-1">
+      <div className="flex items-center gap-2 flex-1 overflow-hidden">
         <div
           className="text-slate-300 hover:text-indigo-400 cursor-grab active:cursor-grabbing p-1 touch-none shrink-0"
           {...attributes}
@@ -96,14 +96,18 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
         </div>
         
         <div className="flex flex-col text-right flex-1 min-w-0 py-0.5">
-          <span className={`text-[0.95rem] font-bold break-words whitespace-normal leading-snug ${isOutOfStock ? "text-red-700" : "text-slate-800"}`}>
-            {product.product_name}
-          </span>
-          
-          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            <span className="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded font-bold shrink-0">
-              {product.base_quantity} {formattedUnit}
+          {/* שורה ראשונה: שם וכמות */}
+          <div className="flex items-baseline gap-2 overflow-hidden justify-start">
+            <span className={`text-[0.95rem] font-bold truncate ${isOutOfStock ? "text-red-700" : "text-slate-800"}`}>
+              {product.product_name}
             </span>
+            <span className={`text-[0.95rem] font-bold shrink-0 ${isOutOfStock ? "text-red-400" : "text-slate-400"}`}>
+              ({product.base_quantity} {formattedUnit})
+            </span>
+          </div>
+          
+          {/* שורה שנייה: תווית סטטוס מלאי */}
+          <div className="flex items-center gap-1.5 mt-1 justify-start">
             {getStockBadge()}
           </div>
         </div>
@@ -137,13 +141,12 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
               <MoreVertical className="h-5 w-5" />
             </button>
           </DropdownMenuTrigger>
-          {/* הוקטן משמעותית (w-40) עם הגבלה חמורה יותר של רוחב המסך (max-w-[85vw]) */}
           <DropdownMenuContent align="end" className="w-40 font-sans p-1.5 rounded-xl shadow-xl border-slate-100 max-w-[85vw] z-50">
             {!isOutOfStock && (
               <>
                 <DropdownMenuItem 
                   onClick={() => handleStockChange(0)}
-                  className="flex flex-col items-end gap-1 p-2 focus:bg-slate-50 cursor-pointer rounded-lg group"
+                  className="flex flex-col items-end gap-1 p-2 focus:bg-slate-50 cursor-pointer rounded-lg group text-right"
                 >
                   <div className="flex items-center gap-2 text-slate-700 font-bold group-hover:text-indigo-600 transition-colors">
                     <span>סמן כחסר</span>
