@@ -1,10 +1,16 @@
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Pencil, Trash2, Plus, Minus, X, MoreHorizontal } from "lucide-react";
+import { GripVertical, Pencil, Trash2, Plus, Minus, Info } from "lucide-react";
 import { Product } from "@/hooks/useProducts";
 import { isLactoseFree } from "@/hooks/useDepartments";
 import { Button } from "@/components/ui/button";
 import { useState, useEffect } from "react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface SortableProductRowProps {
   product: Product;
@@ -17,16 +23,10 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: product.id });
 
   const [localStock, setLocalStock] = useState(product.current_stock ?? 0);
-  const [showActions, setShowActions] = useState(false); // ניהול מצב התפריט החכם
 
   useEffect(() => {
     setLocalStock(product.current_stock ?? 0);
   }, [product.current_stock]);
-
-  // סגירת התפריט אוטומטית אם מתחילים לגרור
-  useEffect(() => {
-    if (isDragging) setShowActions(false);
-  }, [isDragging]);
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -62,15 +62,6 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     onUpdateStock(product.id, validVal);
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const val = parseFloat(e.target.value);
-    if (!isNaN(val)) {
-      handleStockChange(val);
-    } else {
-      handleStockChange(0);
-    }
-  };
-
   const getStockBadge = () => {
     if (localStock === 0) {
       return <span className="text-[10px] bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-bold shrink-0">חסר במלאי</span>;
@@ -80,104 +71,112 @@ export function SortableProductRow({ product, onEdit, onDelete, onUpdateStock }:
     }
     return (
       <span className="text-[10px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold shrink-0">
-        {localStock} מתוך {product.base_quantity} {formattedUnit} במלאי
+        {localStock} מתוך {product.base_quantity} {formattedUnit}
       </span>
     );
   };
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center justify-between rounded-xl px-2 py-3 border transition-colors h-[72px] overflow-hidden ${isOutOfStock ? "bg-red-50/70 border-red-200" : "bg-white border-slate-100 shadow-sm"}`}
-    >
-      {/* צד ימין: ידית גרירה + שם המוצר והתגיות (מקבל את רוב המקום) */}
-      <div className="flex items-center gap-2 flex-1 min-w-0 pr-1">
-        <div
-          className="text-slate-300 hover:text-slate-500 cursor-grab active:cursor-grabbing p-1 touch-none shrink-0"
-          {...attributes}
-          {...listeners}
-        >
-          <GripVertical className="h-5 w-5" />
-        </div>
-        <div className="flex flex-col text-right flex-1 min-w-0">
-          <span className={`text-[1.05rem] font-bold truncate ${isOutOfStock ? "text-red-900" : "text-slate-800"}`}>
-            {product.product_name}
-          </span>
-          <div className="flex items-center gap-2 mt-0.5 overflow-hidden">
-            <span className="text-[11px] text-slate-500 font-bold whitespace-nowrap bg-slate-100 px-1.5 py-0.5 rounded shrink-0">
-               {product.base_quantity} {formattedUnit}
+    <TooltipProvider delayDuration={300}>
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`flex flex-col gap-3 rounded-2xl px-3 py-4 border transition-all ${
+          isOutOfStock ? "bg-red-50/40 border-red-100" : "bg-white border-slate-100 shadow-sm"
+        } md:flex-row md:items-center md:py-3`}
+      >
+        {/* חלק עליון: ידית, שם ותגים */}
+        <div className="flex items-start gap-2 flex-1 overflow-hidden">
+          <div
+            className="text-slate-300 hover:text-indigo-400 cursor-grab active:cursor-grabbing p-1 touch-none shrink-0"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-5 w-5" />
+          </div>
+          
+          <div className="flex flex-col text-right flex-1 overflow-hidden">
+            <span className={`text-[1.05rem] font-bold truncate leading-tight ${isOutOfStock ? "text-red-700" : "text-slate-800"}`}>
+              {product.product_name}
             </span>
-            {getStockBadge()}
-            {lactoseFree && <span className="text-[10px] bg-sky-100 text-sky-700 px-1.5 py-0.5 rounded font-bold shrink-0 hidden sm:inline-flex">ללא לקטוז</span>}
+            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+              <span className="text-[11px] text-slate-500 font-medium bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                יעד: {product.base_quantity} {formattedUnit}
+              </span>
+              {getStockBadge()}
+              {lactoseFree && <span className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-bold border border-sky-100">ללא לקטוז</span>}
+            </div>
+          </div>
+        </div>
+
+        {/* חלק תחתון: פקדי שליטה (מיושרים לימין במובייל) */}
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-50 md:border-t-0 md:pt-0 shrink-0">
+          
+          {/* עריכה ומחיקה */}
+          <div className="flex items-center gap-0.5">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={onEdit} className="text-slate-400 p-2 hover:bg-indigo-50 hover:text-indigo-600 rounded-xl transition-all">
+                  <Pencil className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-slate-800 text-white border-none font-sans font-bold">עריכת המוצר</TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button onClick={onDelete} className="text-slate-400 p-2 hover:bg-red-50 hover:text-red-600 rounded-xl transition-all">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent className="bg-slate-800 text-white border-none font-sans font-bold">מחיקת המוצר</TooltipContent>
+            </Tooltip>
+          </div>
+
+          <div className="h-6 w-px bg-slate-100 mx-1" />
+
+          {/* סמן כחסר */}
+          {!isOutOfStock && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-9 px-3 text-[11px] font-bold border-slate-200 text-slate-500 hover:bg-slate-50 rounded-xl"
+                  onClick={() => handleStockChange(0)}
+                >
+                  סמן כחסר
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent className="max-w-[180px] bg-slate-800 text-white border-none font-sans text-center leading-snug">
+                מאפס את המלאי ומעביר את המוצר לרשימת הקניות
+              </TooltipContent>
+            </Tooltip>
+          )}
+
+          {/* פלוס מינוס */}
+          <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl h-9 overflow-hidden">
+            <button 
+              onClick={() => handleStockChange(localStock - step)}
+              className="px-2.5 h-full text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors border-l border-slate-200"
+            >
+              <Minus className="h-3.5 w-3.5" />
+            </button>
+            <input 
+              type="number" 
+              value={localStock} 
+              onChange={(e) => handleStockChange(parseFloat(e.target.value) || 0)}
+              className="w-10 text-center font-bold text-sm bg-transparent border-none p-0 focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
+            <button 
+              onClick={() => handleStockChange(localStock + step)}
+              className="px-2.5 h-full text-slate-400 hover:bg-slate-200 hover:text-slate-700 transition-colors border-r border-slate-200"
+            >
+              <Plus className="h-3.5 w-3.5" />
+            </button>
           </div>
         </div>
       </div>
-
-      {/* צד שמאל: פקדים חכמים מתחלפים */}
-      <div className="flex items-center shrink-0 pl-1">
-        {showActions ? (
-          // מצב פתוח: כפתורי פעולות משניות
-          <div className="flex items-center gap-1.5 animate-in slide-in-from-left-4 fade-in duration-200">
-            {!isOutOfStock && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-8 px-2 text-[11px] font-bold border-slate-200 text-slate-600 bg-slate-50 hover:bg-slate-100 hover:text-slate-900 shadow-sm"
-                onClick={() => {
-                  handleStockChange(0);
-                  setShowActions(false); // סוגר את התפריט אחרי הלחיצה
-                }}
-              >
-                סמן כחסר
-              </Button>
-            )}
-            <button onClick={onEdit} className="p-1.5 text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 rounded-lg transition-colors">
-              <Pencil className="h-4 w-4" />
-            </button>
-            <button onClick={onDelete} className="p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-500 rounded-lg transition-colors">
-              <Trash2 className="h-4 w-4" />
-            </button>
-            
-            <div className="w-px h-5 bg-slate-200 mx-0.5" /> {/* קו מפריד */}
-            
-            <button onClick={() => setShowActions(false)} className="p-1.5 text-slate-400 hover:text-slate-700 bg-slate-50 rounded-full transition-colors">
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-        ) : (
-          // מצב סגור (ברירת מחדל): כמות ו-3 נקודות
-          <div className="flex items-center gap-2 animate-in slide-in-from-right-2 fade-in duration-200">
-            <div className="flex items-center bg-white border border-slate-200 rounded-lg h-9 overflow-hidden shadow-sm">
-              <button 
-                onClick={() => handleStockChange(localStock - step)}
-                className="px-2.5 h-full text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"
-              >
-                <Minus className="h-3.5 w-3.5" />
-              </button>
-              <input 
-                type="number" 
-                value={localStock} 
-                onChange={handleInputChange}
-                className="w-10 text-center font-black text-sm bg-transparent border-none p-0 focus:ring-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-              <button 
-                onClick={() => handleStockChange(localStock + step)}
-                className="px-2.5 h-full text-slate-400 hover:bg-slate-100 hover:text-slate-800 transition-colors"
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-            </div>
-            
-            <button 
-              onClick={() => setShowActions(true)} 
-              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
-            >
-              <MoreHorizontal className="h-5 w-5" />
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+    </TooltipProvider>
   );
 }
