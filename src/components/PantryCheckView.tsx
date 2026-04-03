@@ -369,17 +369,13 @@ export function PantryCheckView({
                   </div>
                 </div>
               </div>
-    ) : activeProduct ? (
+ ) : activeProduct ? (
               <div className="opacity-100 drop-shadow-xl scale-[1.02]">
                 <div className={`flex items-center justify-between rounded-xl px-4 py-3 border ${activeProduct.current_stock === 0 ? "bg-red-50 border-red-200" : "bg-white border-slate-200"}`}>
                   <div className="flex items-center gap-3 flex-1">
                     <div className="text-indigo-500 cursor-grabbing p-1"><GripVertical className="h-5 w-5" /></div>
-                    <div className="flex flex-col text-right">
-                      <span className="text-[1.05rem] font-medium text-slate-800">{activeProduct.product_name}</span>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <span className="text-xs text-primary font-bold">{activeProduct.base_quantity} {activeProduct.unit || "יחידות"}</span>
-                        {/* התווית הוסרה מכאן */}
-                      </div>
+                    <div className="flex flex-col text-right justify-center">
+                      <span className="text-[1.05rem] font-bold text-slate-800">{activeProduct.product_name}</span>
                     </div>
                   </div>
                 </div>
