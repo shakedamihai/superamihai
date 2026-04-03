@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ChevronDown, Plus } from "lucide-react";
 
-const DEFAULT_UNITS = ["קילו", "גרם", "יחידות", "חבילה", "מארז", "ליטר"];
+// הרשימה המעודכנת והתקנית ברבים
+const DEFAULT_UNITS = ['ק"ג', "גרם", "יחידות", "חבילות", "מארזים", "ליטרים", "בקבוקים", "פחיות", "גלילים"];
 
 interface UnitComboboxProps {
   value: string;
