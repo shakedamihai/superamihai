@@ -52,7 +52,6 @@ const formatUnit = (unit?: string) => {
   return unit;
 };
 
-// פונקציה חכמה שמוצאת כל ביטוי שמתחיל ב"ללא"
 const getFreeFromLabels = (name: string) => {
   if (!name) return [];
   const matches = name.match(/ללא\s+[א-ת]+/g);
@@ -119,6 +118,36 @@ export function ShoppingListView({
     });
     setDeleteTarget(null);
   };
+
+  // פונקציה לבחירת הטקסט והכפתור הנכונים להודעת המחיקה
+  const getDeleteDialogContent = (target: MergedProduct | null) => {
+    if (!target) return { title: "", desc: "", btn: "" };
+    
+    if (target.is_one_time_only) {
+      return {
+        title: "למחוק מהמערכת?",
+        desc: "המוצר הוא חד-פעמי ולכן יימחק לחלוטין מהמערכת.",
+        btn: "מחק מוצר"
+      };
+    }
+    
+    if (target.has_one_time_extra && !target.is_one_time_only) {
+      return {
+        title: "להסיר מרשימת הקניות?",
+        desc: "הכמות החד-פעמית תימחק מהמערכת. הכמות הקבועה של המוצר תישאר במזווה ותעודכן כקיימת במלאי.",
+        btn: "הסר חד-פעמי ועדכן מלאי"
+      };
+    }
+    
+    // מצב רגיל (רק קבוע)
+    return {
+      title: "להסיר מרשימת הקניות?",
+      desc: "המוצר יימחק מהרשימה. הכמות הקבועה של המוצר תישאר במזווה ותעודכן כקיימת במלאי.",
+      btn: "הסר מהרשימה ועדכן במלאי"
+    };
+  };
+
+  const dialogContent = getDeleteDialogContent(deleteTarget);
 
   const filteredDepts = useMemo(() => {
     const keys = Object.keys(shoppingByDepartment);
@@ -295,7 +324,6 @@ export function ShoppingListView({
                   {mergedItems.map((merged) => {
                     const isChecked = merged.ids.every(id => checked.has(id));
                     
-                    // מציאת התוויות האוטומטיות
                     const freeFromTags = getFreeFromLabels(merged.product_name);
                     const unitLabel = formatUnit(merged.unit);
 
@@ -316,7 +344,6 @@ export function ShoppingListView({
                             <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
                               <span className="text-xs text-primary font-bold">{merged.totalQty} {unitLabel}</span>
                               
-                              {/* הדפסת התוויות הדינמיות */}
                               {freeFromTags.map(tag => (
                                 <span key={tag} className="text-[10px] bg-sky-50 text-sky-700 px-1.5 py-0.5 rounded font-bold border border-sky-100 shrink-0">{tag}</span>
                               ))}
@@ -342,14 +369,14 @@ export function ShoppingListView({
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
         <AlertDialogContent className="rounded-3xl p-6 font-sans">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-right">להסיר מרשימת הקניות?</AlertDialogTitle>
+            <AlertDialogTitle className="text-right">{dialogContent.title}</AlertDialogTitle>
             <AlertDialogDescription className="text-right mt-2 font-medium">
-            הכמות החד-פעמית תימחק מהמערכת. הכמות הקבועה של המוצר תישאר במזווה ותעודכן כקיימת במלאי.
+              {dialogContent.desc}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="flex-row-reverse gap-3 mt-4">
             <AlertDialogAction className="rounded-xl px-6 py-5 bg-red-500 hover:bg-red-600 text-white font-bold" onClick={confirmDelete}>
-              הסר מהרשימה ועדכן
+              {dialogContent.btn}
             </AlertDialogAction>
             <AlertDialogCancel className="rounded-xl px-6 py-5 font-medium border border-slate-200">ביטול</AlertDialogCancel>
           </AlertDialogFooter>
