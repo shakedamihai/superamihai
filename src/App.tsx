@@ -1,18 +1,17 @@
-import { BrowserRouter as Router, Routes, Route, useParams, useNavigate } from "react-router-dom";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route, useParams, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-// 1. הוספנו בחזרה את הייבוא של React Query
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query"; 
-
+import { Toaster } from "@/components/ui/sonner";
+import { Toaster as Sonner } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { SpaceProvider } from "./contexts/SpaceContext";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
-import { SpaceProvider } from "./contexts/SpaceContext";
-import { Toaster } from "@/components/ui/sonner";
 
-// 2. יצרנו את מנהל השאילתות (QueryClient)
 const queryClient = new QueryClient();
 
-// רכיב שתופס את ההזמנה מוואטסאפ (Deep Link)
+// רכיב לטיפול בהזמנות שמגיעות מהקישור
 function InviteHandler() {
   const { token } = useParams();
   const navigate = useNavigate();
@@ -27,23 +26,23 @@ function InviteHandler() {
   return <div className="flex h-screen items-center justify-center" dir="rtl">מעבד הזמנה...</div>;
 }
 
-function App() {
-  return (
-    // 3. עטפנו את כל האפליקציה ב-QueryClientProvider
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <SpaceProvider>
+const App = () => (
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <SpaceProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/invite/:token" element={<InviteHandler />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-          <Toaster />
-        </SpaceProvider>
-      </Router>
-    </QueryClientProvider>
-  );
-}
+        </BrowserRouter>
+      </SpaceProvider>
+    </TooltipProvider>
+  </QueryClientProvider>
+);
 
 export default App;
