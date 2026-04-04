@@ -1,7 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-import { supabase } from "@/lib/supabase"; // ודאי שזה הנתיב הנכון שלך
-import { useAuth } from "@/hooks/useAuth"; // מניח שיש לך הוק שמנהל את היוזר
-
+import { supabase } from "@/integrations/supabase/client";import { useAuth } from "@/hooks/useAuth";
 type Space = { id: string; name: string };
 
 interface SpaceContextType {
