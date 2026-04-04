@@ -8,40 +8,33 @@ export function SpaceHeader() {
 
   const handleInvite = async () => {
     if (!activeSpace) return;
+    const { data, error } = await supabase.from('invitations').insert([{ space_id: activeSpace.id, email: "link@share" }]).select('token').single();
+    if (error) { toast.error("לא ניתן לייצר הזמנה כרגע"); return; }
     
-    // יצירת טוקן הזמנה חדש ב-Supabase
-    const { data, error } = await supabase
-      .from('invitations')
-      .insert([{ space_id: activeSpace.id, email: "link@share" }]) 
-      .select('token')
-      .single();
-
-    if (error) {
-      toast.error("לא ניתן לייצר הזמנה כרגע");
-      return;
-    }
-
     const inviteLink = `${window.location.origin}/invite/${data.token}`;
     
-    // ניסיון לשיתוף טבעי בנייד (Web Share API)
     if (navigator.share) {
-      navigator.share({
-        title: 'הצטרפו אליי לאפליקציית הקניות',
-        text: `הזמנה להצטרף לחלל "${activeSpace.name}"`,
-        url: inviteLink,
+      navigator.share({ 
+        title: 'הצטרפו אליי לאפליקציית הקניות', 
+        text: `הזמנה להצטרף לרשימה "${activeSpace.name}"`, // עודכן
+        url: inviteLink 
       }).catch(console.error);
     } else {
-      // אם אין תמיכה בשיתוף טבעי (למשל במחשב), נעתיק ללוח
       navigator.clipboard.writeText(inviteLink);
       toast.success("קישור ההזמנה הועתק ללוח!");
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("התנתקת בהצלחה");
   };
 
   return (
     <div className="flex items-center justify-between p-4 border-b bg-background shadow-sm">
       <div className="flex items-center gap-2">
         <select 
-          className="bg-transparent text-lg font-bold outline-none cursor-pointer focus:ring-0"
+          className="bg-transparent text-lg font-bold outline-none cursor-pointer focus:ring-0 max-w-[150px] truncate"
           value={activeSpace?.id || ""}
           onChange={(e) => {
             const selected = spaces.find(s => s.id === e.target.value);
@@ -54,9 +47,14 @@ export function SpaceHeader() {
         </select>
       </div>
 
-      <Button variant="outline" size="sm" onClick={handleInvite}>
-        הזמן שותף
-      </Button>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" onClick={handleInvite}>
+          הזמן שותף
+        </Button>
+        <Button variant="ghost" size="sm" onClick={handleLogout} className="text-red-500">
+          התנתק
+        </Button>
+      </div>
     </div>
   );
 }
