@@ -155,8 +155,9 @@ export function PantryCheckView({
   }, [productsByDepartment]);
 
   const sortedDepts = useMemo(() => {
-    return [...(departments || [])].filter(d => baseRecurringByDept[d.name]).sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-  }, [departments, baseRecurringByDept]);
+    // הורדנו את ה-filter שחוסם מחלקות ללא מוצרים משוייכים
+    return [...(departments || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  }, [departments]);
 
   const [localDepts, setLocalDepts] = useState<Department[]>(sortedDepts);
   const [localRecurring, setLocalRecurring] = useState<Record<string, Product[]>>(baseRecurringByDept);
