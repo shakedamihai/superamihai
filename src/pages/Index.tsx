@@ -24,8 +24,7 @@ export default function Index() {
   const [isProcessingInvite, setIsProcessingInvite] = useState(false);
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("shopping");
-  console.log("🔍 רשימה נוכחית באפליקציה:", activeSpace?.id);
-console.log("🔍 מוצרים שנמשכו:", shoppingList, productsByDepartment);
+
 
   // חיבור ה-Hooks לרשימה הפעילה
   const {
