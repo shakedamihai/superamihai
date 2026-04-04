@@ -10,66 +10,40 @@ export default function Auth() {
   const [password, setPassword] = useState("");
   const [isLogin, setIsLogin] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [needsEmailConfirmation, setNeedsEmailConfirmation] = useState(false); // הוספנו סטייט חדש
   const navigate = useNavigate();
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setNeedsEmailConfirmation(false);
 
     try {
       if (isLogin) {
-        // התחברות
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
         toast.success("התחברת בהצלחה!");
         navigate("/");
       } else {
-        // הרשמה
-        const { error, data } = await supabase.auth.signUp({ 
+        const { data, error } = await supabase.auth.signUp({ 
           email, 
           password,
-          options: {
-            emailRedirectTo: window.location.origin // מבקש מ-Supabase להחזיר לאתר שלנו אחרי האישור
-          }
         });
+        
         if (error) throw error;
         
-        // בדיקה אם המשתמש נרשם אבל דורש אישור מייל
         if (data.user && data.user.identities && data.user.identities.length === 0) {
             toast.error("כתובת המייל כבר קיימת במערכת.");
         } else {
-             // הרשמה הצליחה, מציגים הודעה לאישור מייל
-             setNeedsEmailConfirmation(true);
-             toast.success("נרשמת בהצלחה! שלחנו לך קישור לאישור למייל.");
+             // מאחר וביטלנו את ה-Confirm Email ב-Supabase, המשתמש מחובר מיד!
+             toast.success("נרשמת והתחברת בהצלחה!");
+             navigate("/");
         }
       }
     } catch (error: any) {
-      toast.error(error.message || "שגיאה בתהליך ההתחברות/הרשמה");
+      toast.error(error.message || "שגיאה בתהליך");
     } finally {
       setLoading(false);
     }
   };
-
-  // מסך הודעה לאחר הרשמה מוצלחת שדורשת אישור מייל
-  if (needsEmailConfirmation) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4 text-center" dir="rtl">
-            <div className="w-full max-w-md p-8 space-y-6 bg-card rounded-xl shadow-lg border">
-                <h2 className="text-2xl font-bold text-primary">עוד שלב אחד קטן...</h2>
-                <p className="text-muted-foreground">
-                    שלחנו אימייל אימות לכתובת <strong>{email}</strong>.
-                    <br/><br/>
-                    אנא היכנס לתיבת הדואר שלך ולחץ על הקישור כדי להפעיל את החשבון.
-                </p>
-                <Button variant="outline" className="w-full mt-4" onClick={() => setNeedsEmailConfirmation(false)}>
-                    חזור להתחברות
-                </Button>
-            </div>
-        </div>
-    );
-  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-background p-4" dir="rtl">
