@@ -59,45 +59,66 @@ export function isLactoseFree(productName: string): boolean {
   return name.includes("ללא לקטוז") || name.includes("לקטוז");
 }
 
-export function useDepartments() {
+export function useDepartments(spaceIdParam?: string) {
   const queryClient = useQueryClient();
   const { activeSpace } = useSpace();
+  
+  // הוספנו פה הגנה קטנה כדי לקבל את המזהה בבטחה
+  const currentSpaceId = spaceIdParam || activeSpace?.id;
 
   const { data: departments = [], isLoading } = useQuery({
-    queryKey: ["departments", activeSpace?.id],
+    queryKey: ["departments", currentSpaceId],
     queryFn: async () => {
-      if (!activeSpace) return [];
+      if (!currentSpaceId) return [];
       
       const { data, error } = await supabase
         .from("departments")
         .select("*")
-        .eq("space_id", activeSpace.id)
+        .eq("space_id", currentSpaceId)
         .order("sort_order", { ascending: true });
       if (error) throw error;
       return data as Department[];
     },
-    enabled: !!activeSpace,
+    enabled: !!currentSpaceId,
   });
 
-  useEffect(() => {
-    if (!activeSpace) return;
+  // --- התוספת החדשה: אם בסיס הנתונים ריק ממחלקות, שולפים אותן מהמוצרים או מהקבועים ---
+  const { data: fallbackDepartments = [] } = useQuery({
+    queryKey: ["products_departments_fallback", currentSpaceId],
+    queryFn: async () => {
+       if (!currentSpaceId || departments.length > 0) return [];
+       const { data } = await supabase
+         .from("products")
+         .select("department")
+         .eq("space_id", currentSpaceId);
+       
+       if (!data) return STANDARD_DEPARTMENTS;
+       const uniqueDepts = Array.from(new Set(data.map(p => p.department)));
+       return uniqueDepts.length > 0 ? uniqueDepts : STANDARD_DEPARTMENTS;
+    },
+    enabled: !!currentSpaceId && departments.length === 0,
+  });
+  // -----------------------------------------------------------------------------------
 
-    const uniqueChannelName = `departments-realtime-${activeSpace.id}-${Math.random().toString(36).substring(7)}`;
+  useEffect(() => {
+    if (!currentSpaceId) return;
+
+    const uniqueChannelName = `departments-realtime-${currentSpaceId}-${Math.random().toString(36).substring(7)}`;
     const channel = supabase
       .channel(uniqueChannelName)
-      .on("postgres_changes", { event: "*", schema: "public", table: "departments", filter: `space_id=eq.${activeSpace.id}` }, () => {
-        queryClient.invalidateQueries({ queryKey: ["departments", activeSpace.id] });
+      .on("postgres_changes", { event: "*", schema: "public", table: "departments", filter: `space_id=eq.${currentSpaceId}` }, () => {
+        queryClient.invalidateQueries({ queryKey: ["departments", currentSpaceId] });
       })
       .subscribe();
       
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient, activeSpace]);
+  }, [queryClient, currentSpaceId]);
 
   const syncStandardDepartments = useMutation({
     mutationFn: async () => {
-      if (!activeSpace) throw new Error("No active space");
+      if (!currentSpaceId) throw new Error("No active space");
 
       const RENAME_MAP: Record<string, string> = {
         "מקרר": "מוצרי חלב ומקרר",
@@ -107,7 +128,7 @@ export function useDepartments() {
         "פארם": "פארם וטואלטיקה"
       };
 
-      const { data: currentDepts } = await supabase.from("departments").select("*").eq("space_id", activeSpace.id);
+      const { data: currentDepts } = await supabase.from("departments").select("*").eq("space_id", currentSpaceId);
       
       for (const dept of (currentDepts || [])) {
         if (RENAME_MAP[dept.name]) {
@@ -115,38 +136,38 @@ export function useDepartments() {
           await supabase.from("products")
             .update({ department: newName })
             .eq("department", dept.name)
-            .eq("space_id", activeSpace.id);
+            .eq("space_id", currentSpaceId);
           await supabase.from("departments").delete().eq("id", dept.id);
         }
       }
 
-      const { data: afterUpdateDepts } = await supabase.from("departments").select("name").eq("space_id", activeSpace.id);
+      const { data: afterUpdateDepts } = await supabase.from("departments").select("name").eq("space_id", currentSpaceId);
       const currentNames = afterUpdateDepts?.map(d => d.name) || [];
       const toAdd = STANDARD_DEPARTMENTS.filter(name => !currentNames.includes(name));
 
       if (toAdd.length > 0) {
-        const { data: maxOrderData } = await supabase.from("departments").select("sort_order").eq("space_id", activeSpace.id).order("sort_order", { ascending: false }).limit(1);
+        const { data: maxOrderData } = await supabase.from("departments").select("sort_order").eq("space_id", currentSpaceId).order("sort_order", { ascending: false }).limit(1);
         const maxOrder = maxOrderData?.[0]?.sort_order ?? -1;
         
         const inserts = toAdd.map((name, index) => ({
           name,
           sort_order: maxOrder + 1 + index,
-          space_id: activeSpace.id
+          space_id: currentSpaceId
         }));
         await supabase.from("departments").insert(inserts);
       }
 
-      const { data: finalDepts } = await supabase.from("departments").select("*").eq("space_id", activeSpace.id);
+      const { data: finalDepts } = await supabase.from("departments").select("*").eq("space_id", currentSpaceId);
       const deptsToDelete = (finalDepts || []).filter(d => !STANDARD_DEPARTMENTS.includes(d.name));
       
       for (const dept of deptsToDelete) {
-        await supabase.from("products").update({ department: "כללי" }).eq("department", dept.name).eq("space_id", activeSpace.id);
+        await supabase.from("products").update({ department: "כללי" }).eq("department", dept.name).eq("space_id", currentSpaceId);
         await supabase.from("departments").delete().eq("id", dept.id);
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["departments", activeSpace?.id] });
-      queryClient.invalidateQueries({ queryKey: ["products", activeSpace?.id] });
+      queryClient.invalidateQueries({ queryKey: ["departments", currentSpaceId] });
+      queryClient.invalidateQueries({ queryKey: ["products", currentSpaceId] });
       toast.success("סנכרון הושלם: המחלקות והמוצרים עודכנו לחלל זה.");
     },
     onError: () => toast.error("שגיאה בסנכרון מחלקות"),
@@ -154,26 +175,26 @@ export function useDepartments() {
 
   const addDepartment = useMutation({
     mutationFn: async (name: string) => {
-      if (!activeSpace) throw new Error("No active space");
-      const { data: maxOrderData } = await supabase.from("departments").select("sort_order").eq("space_id", activeSpace.id).order("sort_order", { ascending: false }).limit(1);
+      if (!currentSpaceId) throw new Error("No active space");
+      const { data: maxOrderData } = await supabase.from("departments").select("sort_order").eq("space_id", currentSpaceId).order("sort_order", { ascending: false }).limit(1);
       const maxOrder = maxOrderData?.[0]?.sort_order ?? -1;
-      const { error } = await supabase.from("departments").insert({ name, sort_order: maxOrder + 1, space_id: activeSpace.id });
+      const { error } = await supabase.from("departments").insert({ name, sort_order: maxOrder + 1, space_id: currentSpaceId });
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments", activeSpace?.id] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments", currentSpaceId] }),
   });
 
   const renameDepartment = useMutation({
     mutationFn: async ({ oldName, newName }: { oldName: string; newName: string }) => {
-      if (!activeSpace) throw new Error("No active space");
-      const { error: deptErr } = await supabase.from("departments").update({ name: newName }).eq("name", oldName).eq("space_id", activeSpace.id);
+      if (!currentSpaceId) throw new Error("No active space");
+      const { error: deptErr } = await supabase.from("departments").update({ name: newName }).eq("name", oldName).eq("space_id", currentSpaceId);
       if (deptErr) throw deptErr;
-      const { error: prodErr } = await supabase.from("products").update({ department: newName }).eq("department", oldName).eq("space_id", activeSpace.id);
+      const { error: prodErr } = await supabase.from("products").update({ department: newName }).eq("department", oldName).eq("space_id", currentSpaceId);
       if (prodErr) throw prodErr;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["departments", activeSpace?.id] });
-      queryClient.invalidateQueries({ queryKey: ["products", activeSpace?.id] });
+      queryClient.invalidateQueries({ queryKey: ["departments", currentSpaceId] });
+      queryClient.invalidateQueries({ queryKey: ["products", currentSpaceId] });
       toast.success("שם המחלקה עודכן");
     },
     onError: () => toast.error("שגיאה בעדכון שם המחלקה"),
@@ -185,15 +206,17 @@ export function useDepartments() {
         await supabase.from("departments").update({ sort_order: u.sort_order }).eq("id", u.id);
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments", activeSpace?.id] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments", currentSpaceId] }),
   });
 
   return {
     departments,
-    departmentNames: departments.map((d) => d.name),
+    // --- התיקון הקריטי להצגת המוצרים: אם אין מחלקות במסד, דוחף למסך את הגיבוי ---
+    departmentNames: departments.length > 0 ? departments.map((d) => d.name) : fallbackDepartments,
     isLoading,
     syncStandardDepartments,
     addDepartment,
     renameDepartment,
+    reorderDepartments // הוספתי לך את זה, היה חסר בקוד המקורי
   };
 }
