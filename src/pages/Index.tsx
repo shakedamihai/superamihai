@@ -5,13 +5,13 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-// ייבוא הקומפוננטה החדשה שיצרנו בשלב 1
 import { SpaceHeader } from "@/components/SpaceHeader";
 
-import ShoppingListView from "@/components/ShoppingListView";
-import PantryCheckView from "@/components/PantryCheckView";
-import AddProductView from "@/components/AddProductView";
-import BottomNav from "@/components/BottomNav";
+// התיקון כאן: הוספנו סוגריים מסולסלים (Named Imports)
+import { ShoppingListView } from "@/components/ShoppingListView";
+import { PantryCheckView } from "@/components/PantryCheckView";
+import { AddProductView } from "@/components/AddProductView";
+import BottomNav from "@/components/BottomNav"; // אם גם עליו הוא צועק, שים אותו גם בסוגריים: import { BottomNav }
 
 export default function Index() {
   const { user } = useAuth();
@@ -41,10 +41,9 @@ export default function Index() {
   }, [user, isLoadingSpaces, joinSpaceByToken]);
 
   if (isLoadingSpaces || isProcessingInvite) {
-    return <div className="flex h-screen items-center justify-center">טוען נתונים...</div>;
+    return <div className="flex h-screen items-center justify-center bg-background" dir="rtl">טוען נתונים...</div>;
   }
 
-  // מסך פתיחה - אם למשתמש אין חללים בכלל
   if (spaces.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-background" dir="rtl">
@@ -72,7 +71,6 @@ export default function Index() {
     );
   }
 
-  // האפליקציה הרגילה - כשיש חלל פעיל
   return (
     <div className="flex flex-col min-h-screen bg-background pb-20" dir="rtl">
       <SpaceHeader />
