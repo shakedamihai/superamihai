@@ -147,7 +147,11 @@ const {
         
         {activeTab === "add" && (
           <AddProductView 
-            onAdd={(product) => addProduct.mutate(product)}
+            onAdd={(product) => addProduct.mutate({
+  ...product,
+  space_id: activeSpace?.id, // שיוך לרשימה הפעילה
+  status: product.is_one_time ? 'to_buy' : 'in_stock' // הגדרה אם זה הולך לקניות או למזווה
+})}
             isAdding={addProduct.isPending}
             departmentNames={departmentNames}
             onAddDepartment={(name) => addDepartment.mutate(name)}
