@@ -1,10 +1,16 @@
 import { BrowserRouter as Router, Routes, Route, useParams, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+// 1. הוספנו בחזרה את הייבוא של React Query
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query"; 
+
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import { SpaceProvider } from "./contexts/SpaceContext";
 import { Toaster } from "@/components/ui/sonner";
+
+// 2. יצרנו את מנהל השאילתות (QueryClient)
+const queryClient = new QueryClient();
 
 // רכיב שתופס את ההזמנה מוואטסאפ (Deep Link)
 function InviteHandler() {
@@ -23,17 +29,20 @@ function InviteHandler() {
 
 function App() {
   return (
-    <Router>
-      <SpaceProvider>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/invite/:token" element={<InviteHandler />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-        <Toaster />
-      </SpaceProvider>
-    </Router>
+    // 3. עטפנו את כל האפליקציה ב-QueryClientProvider
+    <QueryClientProvider client={queryClient}>
+      <Router>
+        <SpaceProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/invite/:token" element={<InviteHandler />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+          <Toaster />
+        </SpaceProvider>
+      </Router>
+    </QueryClientProvider>
   );
 }
 
