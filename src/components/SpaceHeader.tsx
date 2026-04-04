@@ -16,7 +16,7 @@ export function SpaceHeader() {
     if (navigator.share) {
       navigator.share({ 
         title: 'הצטרפו אליי לאפליקציית הקניות', 
-        text: `הזמנה להצטרף לרשימה "${activeSpace.name}"`, // עודכן
+        text: `הזמנה להצטרף לרשימה "${activeSpace.name}"`, 
         url: inviteLink 
       }).catch(console.error);
     } else {
