@@ -12,6 +12,21 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useState, useMemo } from "react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
+// פונקציית יחידות מעודכנת: "יח'" נשאר קצר, "חב'" הופך ל"חבילות"
+const formatUnit = (unit?: string) => {
+  if (!unit || unit.trim() === "") return "יח'";
+  const u = unit.toLowerCase().trim();
+  if (u.includes("קילו") || u === 'ק"ג') return 'ק"ג';
+  if (u.includes("יחיד") || u === "יח'") return "יח'";
+  if (u.includes("חביל") || u === "חב'") return "חבילות";
+  if (u.includes("מארז")) return "מארזים";
+  if (u.includes("גליל")) return "גלילים";
+  if (u.includes("ליטר")) return "ליטרים";
+  if (u.includes("בקבוק")) return "בקבוקים";
+  if (u.includes("פחית")) return "פחיות";
+  return unit;
+};
+
 const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> = {
   "ירקות": { icon: Carrot, color: "text-emerald-500", border: "border-r-emerald-500" },
   "פירות": { icon: Apple, color: "text-pink-500", border: "border-r-pink-500" },
@@ -32,18 +47,6 @@ const DEPT_CONFIG: Record<string, { icon: any, color: string, border: string }> 
   "מעדניה": { icon: ChefHat, color: "text-violet-600", border: "border-r-violet-600" },
   "בריאות ואורגני": { icon: Leaf, color: "text-lime-500", border: "border-r-lime-500" },
   "כללי": { icon: ShoppingBag, color: "text-slate-400", border: "border-r-slate-400" },
-};
-
-const formatUnit = (unit?: string) => {
-  if (!unit || unit.trim() === "") return "יח'";
-  const u = unit.toLowerCase();
-  if (u.includes("קילו") || u === 'ק"ג') return 'ק"ג';
-  if (u.includes("יחיד")) return "יח'";
-  if (u.includes("חביל")) return "חב'";
-  if (u.includes("מארז")) return "מארז";
-  if (u.includes("ליטר")) return "ליטר";
-  if (u.includes("בקבוק")) return "בקבוק";
-  return unit;
 };
 
 const getFreeFromLabels = (name: string) => {
@@ -149,12 +152,12 @@ export function ShoppingListView({
   }
 
   return (
-    <div className="space-y-6 pb-24 bg-slate-50 min-h-screen pt-4 px-2 font-sans">
+    <div className="space-y-6 pb-24 bg-slate-50 min-h-screen pt-4 px-2 font-sans text-right">
       <div className={`relative bg-white border border-slate-200 shadow-sm rounded-[2rem] p-6`}>
         <div className="space-y-4">
           <div className="relative w-full">
             <Search className="absolute right-4 top-3.5 h-5 w-5 text-slate-400" />
-            <Input placeholder="חיפוש..." className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <Input placeholder="חיפוש..." className="w-full pl-10 pr-12 py-6 rounded-xl bg-slate-50 border-slate-200 text-lg text-right" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
           {searchQuery.length === 0 && (
             <div className="space-y-4">
@@ -201,7 +204,7 @@ export function ShoppingListView({
           const Icon = config.icon;
 
           return (
-            <Collapsible key={deptName} open={searchQuery.length > 0 ? true : (openDepts[deptName] !== false)} onOpenChange={(o) => setOpenDepts(p => ({ ...p, [deptName]: o }))} className={`bg-white rounded-2xl shadow-sm border border-border border-r-8 ${config.border}`}>
+            <Collapsible key={deptName} open={searchQuery.length > 0 ? true : (openDepts[deptName] !== false)} onOpenChange={(o) => setOpenDepts(p => ({ ...p, [deptName]: o }))} className={`bg-white rounded-2xl shadow-sm border border-slate-300 border-r-8 ${config.border}`}>
               <CollapsibleTrigger className="w-full flex items-center justify-between px-4 py-4 font-bold outline-none">
                 <div className="flex items-center gap-3">
                   <div className="p-1.5 rounded-lg bg-slate-50"><Icon className={`h-4 w-4 ${config.color}`} /></div>
@@ -210,14 +213,14 @@ export function ShoppingListView({
                 <ChevronDown className={`h-4 w-4 text-slate-300 transition-transform ${openDepts[deptName] !== false ? "rotate-180" : ""}`} />
               </CollapsibleTrigger>
               <CollapsibleContent className="px-2 pb-2">
-                <div className="flex flex-col gap-1.5 border-t border-border/50 pt-2 text-right">
+                <div className="flex flex-col gap-1.5 border-t border-slate-300 pt-2 text-right">
                   {Array.from(mergedMap.values()).map((merged) => {
                     const isChecked = merged.ids.every(id => checked.has(id));
                     const unitLabel = formatUnit(merged.unit);
                     const tags = getFreeFromLabels(merged.product_name);
 
                     return (
-                      <div key={merged.id} className={`flex items-center justify-between rounded-xl px-3 py-2.5 border transition-all ${isChecked ? "bg-muted/40 opacity-50" : "bg-white border-gray-100"}`}>
+                      <div key={merged.id} className={`flex items-center justify-between rounded-xl px-3 py-2.5 border transition-all ${isChecked ? "bg-muted/40 opacity-50" : "bg-white border-slate-200 shadow-sm"}`}>
                         <div className="flex items-center gap-3 flex-1 cursor-pointer overflow-hidden" onClick={() => {
                           const n = new Set(checked); if (isChecked) merged.ids.forEach(id => n.delete(id)); else merged.ids.forEach(id => n.add(id)); setChecked(n);
                         }}>
