@@ -7,18 +7,46 @@ import { Input } from "@/components/ui/input";
 
 import { SpaceHeader } from "@/components/SpaceHeader";
 
-// התיקון כאן: הוספנו סוגריים מסולסלים (Named Imports)
+// ייבוא נכון עם סוגריים מסולסלים (Named Imports)
 import { ShoppingListView } from "@/components/ShoppingListView";
 import { PantryCheckView } from "@/components/PantryCheckView";
 import { AddProductView } from "@/components/AddProductView";
-import BottomNav from "@/components/BottomNav"; // אם גם עליו הוא צועק, שים אותו גם בסוגריים: import { BottomNav }
+import { BottomNav } from "@/components/BottomNav";
+
+// ייבוא ההוקים של הנתונים
+import { useProducts } from "@/hooks/useProducts";
+import { useDepartments } from "@/hooks/useDepartments";
+
+type Tab = "shopping" | "pantry" | "add";
 
 export default function Index() {
   const { user } = useAuth();
   const { spaces, activeSpace, isLoadingSpaces, createSpace, joinSpaceByToken } = useSpace();
   const [newSpaceName, setNewSpaceName] = useState("");
   const [isProcessingInvite, setIsProcessingInvite] = useState(false);
-  const [activeTab, setActiveTab] = useState("shopping");
+  const [activeTab, setActiveTab] = useState<Tab>("shopping");
+
+  // משיכת כל הנתונים מתוך ההוקים (הם כבר מסוננים לפי activeSpace בזכות העדכון הקודם)
+  const {
+    shoppingByDepartment,
+    shoppingList,
+    copyListAsText,
+    finishChecked,
+    deleteProduct,
+    updateStock,
+    updateProduct,
+    productsByDepartment,
+    reorderProducts,
+    addProduct
+  } = useProducts();
+
+  const {
+    departments,
+    departmentNames,
+    reorderDepartments,
+    addDepartment,
+    renameDepartment
+  } = useDepartments();
 
   useEffect(() => {
     const processInvite = async () => {
@@ -44,6 +72,7 @@ export default function Index() {
     return <div className="flex h-screen items-center justify-center bg-background" dir="rtl">טוען נתונים...</div>;
   }
 
+  // מסך יצירת חלל ראשון (Onboarding)
   if (spaces.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-background" dir="rtl">
@@ -76,14 +105,51 @@ export default function Index() {
       <SpaceHeader />
 
       <main className="flex-1 p-4 md:max-w-2xl md:mx-auto md:w-full">
-        {activeTab === "shopping" && <ShoppingListView />}
-        {activeTab === "pantry" && <PantryCheckView />}
-        {activeTab === "add" && <AddProductView />}
+        {activeTab === "shopping" && (
+          <ShoppingListView 
+            shoppingByDepartment={shoppingByDepartment}
+            shoppingList={shoppingList}
+            onCopyList={copyListAsText}
+            onFinishChecked={(ids) => finishChecked.mutate(ids)}
+            onDeleteProduct={(id) => deleteProduct.mutate(id)}
+            onUpdateStock={(id, stock) => updateStock.mutate({ id, current_stock: stock })}
+            onUpdateProduct={(updates) => updateProduct.mutate(updates as any)}
+            isFinishing={finishChecked.isPending}
+          />
+        )}
+        
+        {activeTab === "pantry" && (
+          <PantryCheckView 
+            productsByDepartment={productsByDepartment}
+            departments={departments}
+            onUpdateStock={(id, stock) => updateStock.mutate({ id, current_stock: stock })}
+            onUpdateProduct={(updates) => updateProduct.mutate(updates as any)}
+            onDeleteProduct={(id) => deleteProduct.mutate(id)}
+            onReorderProducts={(updates) => reorderProducts.mutate(updates)}
+            onReorderDepartments={(updates) => reorderDepartments.mutate(updates)}
+            onRenameDepartment={(oldName, newName) => renameDepartment.mutate({ oldName, newName })}
+            departmentNames={departmentNames}
+            onAddDepartment={(name) => addDepartment.mutate(name)}
+          />
+        )}
+        
+        {activeTab === "add" && (
+          <AddProductView 
+            onAdd={(product) => addProduct.mutate(product)}
+            isAdding={addProduct.isPending}
+            departmentNames={departmentNames}
+            onAddDepartment={(name) => addDepartment.mutate(name)}
+          />
+        )}
       </main>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 bg-background border-t">
         <div className="md:max-w-2xl md:mx-auto">
-          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+          <BottomNav 
+            active={activeTab} 
+            onChange={setActiveTab} 
+            shoppingCount={shoppingList.length} 
+          />
         </div>
       </div>
     </div>
