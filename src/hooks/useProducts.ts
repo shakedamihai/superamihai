@@ -74,32 +74,24 @@ export function useProducts() {
   }, [queryClient, activeSpace]);
 
   const addProduct = useMutation({
-  mutationFn: async (newProduct: any) => {
-    const { data, error } = await supabase
-      .from('products')
-      .insert([newProduct])
-      .select();
-    if (error) throw error;
-    return data;
-  },
-  onSuccess: () => {
-    // השורות האלו מכריחות את המסך להתעדכן עם הנתונים החדשים מה-SQL
-    queryClient.invalidateQueries({ queryKey: ['products'] });
-    queryClient.invalidateQueries({ queryKey: ['products', spaceId] });
-    toast.success("המוצר נוסף בהצלחה");
-  },
-});
-  onSuccess: () => {
-    // הפקודה הזו היא "הקסם" - היא מוחקת את המידע הישן מהזיכרון של הדפדפן
-    // ומכריחה את Index.tsx למשוך את המוצרים החדשים שראית ב-SQL
-    queryClient.invalidateQueries({ queryKey: ['products'] });
-    queryClient.invalidateQueries({ queryKey: ['products', spaceId] });
-    toast.success("המוצר נוסף בהצלחה!");
-  },
-  onError: (error: any) => {
-    toast.error("שגיאה בהוספת מוצר: " + error.message);
-  }
-});
+    mutationFn: async (newProduct: any) => {
+      const { data, error } = await supabase
+        .from('products')
+        .insert([newProduct])
+        .select();
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['products'] });
+      // תוקן כאן המשתנה ל-activeSpace?.id
+      queryClient.invalidateQueries({ queryKey: ['products', activeSpace?.id] });
+      toast.success("המוצר נוסף בהצלחה!");
+    },
+    onError: (error: any) => {
+      toast.error("שגיאה בהוספת מוצר: " + error.message);
+    }
+  });
 
   const updateProduct = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; product_name?: string; department?: string; base_quantity?: number; current_stock?: number; unit?: string }) => {
