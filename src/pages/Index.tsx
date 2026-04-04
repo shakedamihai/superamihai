@@ -26,15 +26,15 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState<Tab>("shopping");
 
   const {
-    shoppingByDepartment, shoppingList, copyListAsText, finishChecked,
-    deleteProduct, updateStock, updateProduct, productsByDepartment,
-    reorderProducts, addProduct
-  } = useProducts();
+  shoppingByDepartment, shoppingList, copyListAsText, finishChecked,
+  deleteProduct, updateStock, updateProduct, productsByDepartment,
+  reorderProducts, addProduct
+} = useProducts(activeSpace?.id || ""); // הוספנו את ה-ID
 
-  const {
-    departments, departmentNames, reorderDepartments,
-    addDepartment, renameDepartment
-  } = useDepartments();
+const {
+  departments, departmentNames, reorderDepartments,
+  addDepartment, renameDepartment
+} = useDepartments(activeSpace?.id || ""); // הוספנו את ה-ID
 
   // 1. בדיקת התחברות - מי שלא מחובר עף לדף ה-Auth
   useEffect(() => {
@@ -87,7 +87,7 @@ export default function Index() {
   if (spaces.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-background" dir="rtl">
-        <h1 className="text-3xl font-bold mb-2">ברוכים הבאים ל-SuperAmihai!</h1>
+        <h1 className="text-3xl font-bold mb-2">ברוכים הבאים ל-Perfect Cart!</h1>
         <p className="text-muted-foreground mb-8">כדי להתחיל, צרו את הרשימה המשותפת הראשונה שלכם.</p>
         
         <div className="w-full max-w-sm space-y-4">
