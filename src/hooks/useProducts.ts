@@ -75,18 +75,20 @@ export function useProducts() {
 
   const addProduct = useMutation({
   mutationFn: async (newProduct: any) => {
-    // וידוא אחרון שהשדות הנכונים נשלחים
     const { data, error } = await supabase
       .from('products')
-      .insert([{
-        ...newProduct,
-        // אם לא נשלח סטטוס, נקבע ברירת מחדל
-        status: newProduct.status || (newProduct.is_one_time ? 'to_buy' : 'in_stock')
-      }])
+      .insert([newProduct])
       .select();
     if (error) throw error;
     return data;
   },
+  onSuccess: () => {
+    // השורות האלו מכריחות את המסך להתעדכן עם הנתונים החדשים מה-SQL
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['products', spaceId] });
+    toast.success("המוצר נוסף בהצלחה");
+  },
+});
   onSuccess: () => {
     // הפקודה הזו היא "הקסם" - היא מוחקת את המידע הישן מהזיכרון של הדפדפן
     // ומכריחה את Index.tsx למשוך את המוצרים החדשים שראית ב-SQL
