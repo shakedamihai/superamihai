@@ -27,12 +27,12 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
   const [isLoadingSpaces, setIsLoadingSpaces] = useState(true);
 
   const fetchSpaces = async () => {
-    setIsLoadingSpaces(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         setSpaces([]);
         setActiveSpace(null);
+        setIsLoadingSpaces(false);
         return;
       }
 
@@ -41,23 +41,14 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
         .select('*')
         .order('created_at', { ascending: true });
 
-      if (error) {
-        console.error("Error fetching spaces:", error);
-        return;
-      }
+      if (error) throw error;
 
       setSpaces(data || []);
-      
-      // אם אין רשימה פעילה כרגע, תבחר את הראשונה אוטומטית
-      if (data && data.length > 0) {
-        if (!activeSpace || !data.find(s => s.id === activeSpace.id)) {
-          setActiveSpace(data[0]);
-        }
-      } else {
-        setActiveSpace(null);
+      if (data && data.length > 0 && !activeSpace) {
+        setActiveSpace(data[0]);
       }
     } catch (err) {
-      console.error(err);
+      console.error("Error fetching spaces:", err);
     } finally {
       setIsLoadingSpaces(false);
     }
@@ -65,64 +56,43 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
 
   useEffect(() => {
     fetchSpaces();
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
-      if (event === 'SIGNED_IN') fetchSpaces();
-      if (event === 'SIGNED_OUT') {
-        setSpaces([]);
-        setActiveSpace(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
   }, []);
 
   const createSpace = async (name: string) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        toast.error("משתמש לא מחובר");
-        return;
-      }
+      if (!session) return;
 
-      // התיקון הקריטי: שולחים את ה-owner_id יחד עם שם הרשימה למסד הנתונים!
+      // 1. יצירת הרשימה עם owner_id מפורש
       const { data: space, error: spaceError } = await supabase
         .from('spaces')
         .insert([{ name, owner_id: session.user.id }])
         .select()
         .single();
 
-      if (spaceError) {
-        console.error("Error creating space:", spaceError);
-        toast.error("שגיאה ביצירת הרשימה: אין הרשאה לשמור נתונים");
-        return;
-      }
+      if (spaceError) throw spaceError;
 
       if (space) {
-        // ברגע שהרשימה נוצרה, נוסיף את המשתמש כחבר ברשימה
+        // 2. הוספת המשתמש כחבר
         const { error: memberError } = await supabase
           .from('space_members')
           .insert([{ space_id: space.id, user_id: session.user.id }]);
 
-        if (memberError) {
-          console.error("Error joining space:", memberError);
-        }
+        if (memberError) console.error("Member insert error:", memberError);
 
-        // מרעננים את האפליקציה כדי שתציג את הרשימה החדשה
         await fetchSpaces();
         setActiveSpace(space);
-        toast.success("הרשימה המשותפת נוצרה בהצלחה!");
+        toast.success("הרשימה נוצרה בהצלחה!");
       }
-
-    } catch (error) {
-      console.error("Unknown error creating space:", error);
-      toast.error("שגיאה לא צפויה ביצירת רשימה");
+    } catch (error: any) {
+      console.error("Error creating space:", error);
+      toast.error(error.message || "שגיאה ביצירת הרשימה");
     }
   };
 
   const joinSpaceByToken = async (token: string) => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error("Not authenticated");
+    if (!session) return;
 
     const { data: invite, error: inviteError } = await supabase
       .from('invitations')
@@ -130,20 +100,14 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
       .eq('token', token)
       .single();
 
-    if (inviteError || !invite) {
-      throw new Error("Invalid token");
-    }
+    if (inviteError || !invite) throw new Error("הזמנה לא בתוקף");
 
     const { error: memberError } = await supabase
       .from('space_members')
       .insert([{ space_id: invite.space_id, user_id: session.user.id }]);
 
-    // שגיאה 23505 אומרת שהמשתמש כבר חבר ברשימה, אז אנחנו מתעלמים ממנה
-    if (memberError && memberError.code !== '23505') {
-      throw memberError; 
-    }
+    if (memberError && memberError.code !== '23505') throw memberError;
 
-    await supabase.from('invitations').update({ status: 'accepted' }).eq('token', token);
     await fetchSpaces();
   };
 
@@ -156,8 +120,6 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
 
 export const useSpace = () => {
   const context = useContext(SpaceContext);
-  if (context === undefined) {
-    throw new Error('useSpace must be used within a SpaceProvider');
-  }
+  if (context === undefined) throw new Error('useSpace must be used within a SpaceProvider');
   return context;
 };
