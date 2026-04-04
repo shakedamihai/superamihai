@@ -1,8 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useParams, useNavigate } from "react-router-dom";
 import { useEffect } from "react";
-import { Toaster } from "@/components/ui/sonner";
-import { Toaster as Sonner } from "@/components/ui/sonner";
+import { Toaster } from "@/components/ui/sonner"; // השארנו רק אחד
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { SpaceProvider } from "./contexts/SpaceContext";
 import Index from "./pages/Index";
@@ -19,28 +18,32 @@ function InviteHandler() {
   useEffect(() => {
     if (token) {
       localStorage.setItem("pending_invite_token", token);
-      navigate("/");
+      // replace: true מונע לופים של כפתור "חזור"
+      navigate("/", { replace: true });
     }
   }, [token, navigate]);
 
-  return <div className="flex h-screen items-center justify-center" dir="rtl">מעבד הזמנה...</div>;
+  return (
+    <div className="flex h-screen items-center justify-center bg-background" dir="rtl">
+      <p className="text-lg animate-pulse">מעבד הזמנה לרשימה...</p>
+    </div>
+  );
 }
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <SpaceProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
+      <BrowserRouter>
+        <SpaceProvider>
+          <Toaster position="top-center" closeButton /> 
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/invite/:token" element={<InviteHandler />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
-        </BrowserRouter>
-      </SpaceProvider>
+        </SpaceProvider>
+      </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
 );
