@@ -1,28 +1,36 @@
 import { useState, useEffect } from "react";
-import { useSpace } from "@/contexts/SpaceContext";
-import { useProducts } from "@/hooks/useProducts";
-import { useDepartments, autoCategorize } from "@/hooks/useDepartments";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Zap, Minus, RotateCcw } from "lucide-react";
 import { DepartmentCombobox } from "./DepartmentCombobox";
 import { UnitCombobox } from "./UnitCombobox";
-import { toast } from "sonner";
+import { autoCategorize } from "@/hooks/useDepartments";
 
-export default function AddProductView() {
-  const { activeSpace } = useSpace();
-  const { addProduct } = useProducts(activeSpace?.id || "");
-  const { departmentNames, addDepartment } = useDepartments(activeSpace?.id || "");
+// אנחנו משאירים את ה-Interface בדיוק כמו שהוא כדי לא לשבור את Index.tsx
+interface AddProductViewProps {
+  onAdd: (product: {
+    product_name: string;
+    department: string;
+    base_quantity: number;
+    current_stock?: number;
+    is_one_time?: boolean;
+    unit?: string;
+  }) => void;
+  isAdding: boolean;
+  departmentNames: string[];
+  onAddDepartment: (name: string) => void;
+}
 
+export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartment }: AddProductViewProps) {
   const [name, setName] = useState("");
-  const [department, setDepartment] = useState("כללי");
+  const [department, setDepartment] = useState<string>(departmentNames[0] || "כללי");
   const [unit, setUnit] = useState("יחידות");
   const [baseQty, setBaseQty] = useState(1);
   const [isOneTime, setIsOneTime] = useState(false);
   const [isManualOverride, setIsManualOverride] = useState(false);
 
-  // לוגיקה חכמה: זיהוי קטגוריה אוטומטי
+  // לוגיקת זיהוי מחלקה אוטומטית (נשמרת!)
   useEffect(() => {
     if (name.length <= 1) setIsManualOverride(false);
     
@@ -34,7 +42,6 @@ export default function AddProductView() {
     }
   }, [name, isManualOverride, department]);
 
-  // לוגיקה חכמה: קפיצות כמות לפי יחידה
   const getStep = (u: string) => {
     const l = u.toLowerCase();
     if (l.includes("קילו") || l === 'ק"ג' || l.includes("ליטר")) return 0.5;
@@ -44,30 +51,24 @@ export default function AddProductView() {
 
   const step = getStep(unit);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !activeSpace) return;
+    if (!name.trim()) return;
 
-    try {
-      await addProduct.mutateAsync({
-        product_name: name.trim(),
-        department: department,
-        base_quantity: baseQty,
-        current_stock: isOneTime ? 0 : baseQty,
-        is_one_time: isOneTime,
-        unit: unit,
-        space_id: activeSpace.id, // התיקון שמוודא שהמוצר נשמר ברשימה הנכונה
-        status: isOneTime ? "to_buy" : "in_stock"
-      });
+    // כאן התיקון: מוצר קבוע מתווסף עם מלאי מלא (current_stock = base_quantity) 
+    // כדי שיופיע מיד במזווה/מלאי
+    onAdd({
+      product_name: name.trim(),
+      department,
+      base_quantity: baseQty,
+      current_stock: isOneTime ? 0 : baseQty, 
+      is_one_time: isOneTime,
+      unit: unit,
+    });
 
-      setName("");
-      setBaseQty(unit.includes("גרם") ? 100 : 1);
-      setIsManualOverride(false);
-      toast.success(`"${name}" נוסף בהצלחה`);
-    } catch (error) {
-      console.error("Error adding product:", error);
-      toast.error("שגיאה בשמירת המוצר");
-    }
+    setName("");
+    setBaseQty(unit.includes("גרם") ? 100 : 1);
+    setIsManualOverride(false);
   };
 
   return (
@@ -114,15 +115,16 @@ export default function AddProductView() {
             <Label className="text-xs font-bold mr-1 text-slate-600">מחלקה</Label>
             <DepartmentCombobox 
               value={department} 
-              onSelect={(val) => { setDepartment(val); setIsManualOverride(true); }} 
-              spaceId={activeSpace?.id || ""}
+              onChange={(val) => { setDepartment(val); setIsManualOverride(true); }} 
+              departments={departmentNames} 
+              onAddDepartment={onAddDepartment} 
             />
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-bold mr-1 text-slate-600">יחידה</Label>
-              <UnitCombobox value={unit} onSelect={(u) => { setUnit(u); setBaseQty(getStep(u) === 100 ? 100 : 1); }} />
+              <UnitCombobox value={unit} onChange={(u) => { setUnit(u); setBaseQty(getStep(u) === 100 ? 100 : 1); }} />
             </div>
 
             <div className="space-y-1">
@@ -147,7 +149,7 @@ export default function AddProductView() {
             className={`w-full h-11 rounded-xl font-bold text-base shadow-sm transition-all active:scale-[0.98] ${
               isOneTime ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-indigo-600 hover:bg-indigo-700 text-white"
             }`}
-            disabled={addProduct.isPending || !name.trim()}
+            disabled={isAdding || !name.trim()}
           >
             <Plus className="h-4 w-4 ml-1.5" />
             {isOneTime ? "הוסף לקניות" : "הוסף למזווה"}
