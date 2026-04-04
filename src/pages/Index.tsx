@@ -25,7 +25,7 @@ export default function Index() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("shopping");
 
-  // שינוי 1: העברת ה-ID של הרשימה הפעילה ל-Hooks כדי שהנתונים יימשכו מהרשימה הנכונה
+  // חיבור ה-Hooks לרשימה הפעילה
   const {
     shoppingByDepartment, shoppingList, copyListAsText, finishChecked,
     deleteProduct, updateStock, updateProduct, productsByDepartment,
@@ -69,7 +69,7 @@ export default function Index() {
           toast.success("הצטרפת לרשימה בהצלחה!");
           localStorage.removeItem("pending_invite_token");
         } catch (error) {
-          toast.error("שגיאה בקבלת ההזמנה, ייתכן שהיא פגה או שאתה כבר חבר ברשימה זו");
+          toast.error("שגיאה בקבלת ההזמנה");
           localStorage.removeItem("pending_invite_token");
         } finally {
           setIsProcessingInvite(false);
@@ -88,10 +88,9 @@ export default function Index() {
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-background" dir="rtl">
         <h1 className="text-3xl font-bold mb-2">ברוכים הבאים ל-SuperAmihai!</h1>
         <p className="text-muted-foreground mb-8">כדי להתחיל, צרו את הרשימה המשותפת הראשונה שלכם.</p>
-        
         <div className="w-full max-w-sm space-y-4">
           <Input 
-            placeholder="שם הרשימה (למשל: הקניות לבית)" 
+            placeholder="שם הרשימה" 
             value={newSpaceName}
             onChange={(e) => setNewSpaceName(e.target.value)}
           />
@@ -102,9 +101,6 @@ export default function Index() {
           >
             צור רשימה
           </Button>
-          <div className="mt-6 text-sm text-muted-foreground border p-4 rounded bg-muted/50">
-            מחכים להזמנה? לחצו על הקישור שקיבלתם בוואטסאפ.
-          </div>
         </div>
       </div>
     );
@@ -145,7 +141,6 @@ export default function Index() {
         
         {activeTab === "add" && (
           <AddProductView 
-            // שינוי 2: הזרקת ה-space_id וה-status הנכון בזמן הוספת מוצר
             onAdd={(product) => addProduct.mutate({
               ...product,
               space_id: activeSpace?.id,
