@@ -26,6 +26,12 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
   const [activeSpace, setActiveSpace] = useState<Space | null>(null);
   const [isLoadingSpaces, setIsLoadingSpaces] = useState(true);
 
+  // 1. פונקציה חכמה שגם משנה את הסטייט וגם שומרת בזיכרון הדפדפן
+  const handleSetActiveSpace = (space: Space) => {
+    setActiveSpace(space);
+    localStorage.setItem('active_space_id', space.id);
+  };
+
   const fetchSpaces = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -44,8 +50,20 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
       if (error) throw error;
 
       setSpaces(data || []);
+      
+      // 2. כשהנתונים חוזרים, בודקים קודם מה שמור בזיכרון הדפדפן
       if (data && data.length > 0 && !activeSpace) {
-        setActiveSpace(data[0]);
+        const savedId = localStorage.getItem('active_space_id');
+        const savedSpace = savedId ? data.find(s => s.id === savedId) : null;
+        
+        if (savedSpace) {
+          // אם מצאנו רשימה שמורה - נטען אותה
+          setActiveSpace(savedSpace);
+        } else {
+          // אם אין כלום בזיכרון - נטען את הראשונה ונשמור אותה
+          setActiveSpace(data[0]);
+          localStorage.setItem('active_space_id', data[0].id);
+        }
       }
     } catch (err) {
       console.error("Error fetching spaces:", err);
@@ -63,7 +81,6 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // 1. יצירת הרשימה עם owner_id מפורש
       const { data: space, error: spaceError } = await supabase
         .from('spaces')
         .insert([{ name, owner_id: session.user.id }])
@@ -73,7 +90,6 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
       if (spaceError) throw spaceError;
 
       if (space) {
-        // 2. הוספת המשתמש כחבר
         const { error: memberError } = await supabase
           .from('space_members')
           .insert([{ space_id: space.id, user_id: session.user.id }]);
@@ -81,7 +97,8 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
         if (memberError) console.error("Member insert error:", memberError);
 
         await fetchSpaces();
-        setActiveSpace(space);
+        // 3. משתמשים בפונקציה החדשה כדי שגם רשימה חדשה תישמר בזיכרון
+        handleSetActiveSpace(space);
         toast.success("הרשימה נוצרה בהצלחה!");
       }
     } catch (error: any) {
@@ -112,7 +129,8 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <SpaceContext.Provider value={{ spaces, activeSpace, setActiveSpace, isLoadingSpaces, createSpace, joinSpaceByToken, fetchSpaces }}>
+    // 4. מעבירים החוצה את הפונקציה החדשה שלנו תחת השם המקורי, כדי לא לשבור שום רכיב אחר באפליקציה
+    <SpaceContext.Provider value={{ spaces, activeSpace, setActiveSpace: handleSetActiveSpace, isLoadingSpaces, createSpace, joinSpaceByToken, fetchSpaces }}>
       {children}
     </SpaceContext.Provider>
   );
