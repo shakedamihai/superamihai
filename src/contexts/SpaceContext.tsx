@@ -26,7 +26,7 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
   const [activeSpace, setActiveSpace] = useState<Space | null>(null);
   const [isLoadingSpaces, setIsLoadingSpaces] = useState(true);
 
-  // 1. פונקציה חכמה שגם משנה את הסטייט וגם שומרת בזיכרון הדפדפן
+  // הפונקציה החכמה: משנה את הסטייט וגם שומרת בדפדפן
   const handleSetActiveSpace = (space: Space) => {
     setActiveSpace(space);
     localStorage.setItem('active_space_id', space.id);
@@ -51,16 +51,14 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
 
       setSpaces(data || []);
       
-      // 2. כשהנתונים חוזרים, בודקים קודם מה שמור בזיכרון הדפדפן
+      // כשהנתונים חוזרים, בודקים מה שמרנו בזיכרון
       if (data && data.length > 0 && !activeSpace) {
         const savedId = localStorage.getItem('active_space_id');
         const savedSpace = savedId ? data.find(s => s.id === savedId) : null;
         
         if (savedSpace) {
-          // אם מצאנו רשימה שמורה - נטען אותה
           setActiveSpace(savedSpace);
         } else {
-          // אם אין כלום בזיכרון - נטען את הראשונה ונשמור אותה
           setActiveSpace(data[0]);
           localStorage.setItem('active_space_id', data[0].id);
         }
@@ -97,7 +95,7 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
         if (memberError) console.error("Member insert error:", memberError);
 
         await fetchSpaces();
-        // 3. משתמשים בפונקציה החדשה כדי שגם רשימה חדשה תישמר בזיכרון
+        // שמירת הרשימה החדשה בזיכרון כדי שלא נאבד אותה
         handleSetActiveSpace(space);
         toast.success("הרשימה נוצרה בהצלחה!");
       }
@@ -129,7 +127,7 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    // 4. מעבירים החוצה את הפונקציה החדשה שלנו תחת השם המקורי, כדי לא לשבור שום רכיב אחר באפליקציה
+    // חושפים את הפונקציה החכמה תחת השם המקורי כדי לא לשבור שום דבר
     <SpaceContext.Provider value={{ spaces, activeSpace, setActiveSpace: handleSetActiveSpace, isLoadingSpaces, createSpace, joinSpaceByToken, fetchSpaces }}>
       {children}
     </SpaceContext.Provider>
