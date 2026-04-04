@@ -19,7 +19,6 @@ type Tab = "shopping" | "pantry" | "add";
 
 export default function Index() {
   const navigate = useNavigate();
-  // שומרים על שמות המשתנים בקוד כדי לא לשבור את הלוגיקה
   const { spaces, activeSpace, isLoadingSpaces, createSpace, joinSpaceByToken } = useSpace();
   const [newSpaceName, setNewSpaceName] = useState("");
   const [isProcessingInvite, setIsProcessingInvite] = useState(false);
@@ -37,7 +36,7 @@ export default function Index() {
     addDepartment, renameDepartment
   } = useDepartments();
 
-  // 1. בדיקת התחברות
+  // 1. בדיקת התחברות - מי שלא מחובר עף לדף ה-Auth
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -58,7 +57,7 @@ export default function Index() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // 2. קליטת הזמנה
+  // 2. קליטת הזמנה לרשימה
   useEffect(() => {
     const processInvite = async () => {
       const token = localStorage.getItem("pending_invite_token");
@@ -66,10 +65,10 @@ export default function Index() {
         setIsProcessingInvite(true);
         try {
           await joinSpaceByToken(token);
-          toast.success("הצטרפת לרשימה בהצלחה!"); // עודכן
+          toast.success("הצטרפת לרשימה בהצלחה!");
           localStorage.removeItem("pending_invite_token");
         } catch (error) {
-          toast.error("שגיאה בקבלת ההזמנה, ייתכן שהיא פגה או שאתה כבר חבר ברשימה זו"); // עודכן
+          toast.error("שגיאה בקבלת ההזמנה, ייתכן שהיא פגה או שאתה כבר חבר ברשימה זו");
           localStorage.removeItem("pending_invite_token");
         } finally {
           setIsProcessingInvite(false);
@@ -79,11 +78,12 @@ export default function Index() {
     processInvite();
   }, [isAuthChecking, isLoadingSpaces, joinSpaceByToken]);
 
+  // מסכי טעינה
   if (isAuthChecking || isLoadingSpaces || isProcessingInvite) {
     return <div className="flex h-screen items-center justify-center bg-background" dir="rtl">טוען נתונים...</div>;
   }
 
-  // מסך יצירת רשימה ראשונה (Onboarding) - עודכן ל"רשימה"
+  // מסך יצירת רשימה ראשונה (Onboarding)
   if (spaces.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-background" dir="rtl">
@@ -111,6 +111,7 @@ export default function Index() {
     );
   }
 
+  // האפליקציה עצמה
   return (
     <div className="flex flex-col min-h-screen bg-background pb-20" dir="rtl">
       <SpaceHeader />
