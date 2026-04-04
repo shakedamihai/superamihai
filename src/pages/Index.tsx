@@ -26,17 +26,17 @@ export default function Index() {
   const [activeTab, setActiveTab] = useState<Tab>("shopping");
 
 
-  // חיבור ה-Hooks לרשימה הפעילה
+ // חיבור ה-Hooks עם הגנה: אם אין אקטיבי, קח את הראשון, אם אין ראשון - שלח מחרוזת ריקה
   const {
     shoppingByDepartment, shoppingList, copyListAsText, finishChecked,
     deleteProduct, updateStock, updateProduct, productsByDepartment,
     reorderProducts, addProduct
-  } = useProducts(activeSpace?.id || "");
+  } = useProducts(activeSpace?.id || spaces[0]?.id || "");
 
   const {
     departments, departmentNames, reorderDepartments,
     addDepartment, renameDepartment
-  } = useDepartments(activeSpace?.id || "");
+  } = useDepartments(activeSpace?.id || spaces[0]?.id || "");
 
   // 1. בדיקת התחברות
   useEffect(() => {
