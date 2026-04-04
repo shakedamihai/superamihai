@@ -7,7 +7,6 @@ import { DepartmentCombobox } from "./DepartmentCombobox";
 import { UnitCombobox } from "./UnitCombobox";
 import { autoCategorize } from "@/hooks/useDepartments";
 
-// אנחנו משאירים את ה-Interface בדיוק כמו שהוא כדי לא לשבור את Index.tsx
 interface AddProductViewProps {
   onAdd: (product: {
     product_name: string;
@@ -30,7 +29,6 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
   const [isOneTime, setIsOneTime] = useState(false);
   const [isManualOverride, setIsManualOverride] = useState(false);
 
-  // לוגיקת זיהוי מחלקה אוטומטית (נשמרת!)
   useEffect(() => {
     if (name.length <= 1) setIsManualOverride(false);
     
@@ -55,12 +53,11 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
     e.preventDefault();
     if (!name.trim()) return;
 
-    // כאן התיקון: מוצר קבוע מתווסף עם מלאי מלא (current_stock = base_quantity) 
-    // כדי שיופיע מיד במזווה/מלאי
     onAdd({
       product_name: name.trim(),
       department,
       base_quantity: baseQty,
+      // השינוי היחיד: אם מוצר קבוע, הוא מתחיל עם מלאי שווה לכמות הבסיס
       current_stock: isOneTime ? 0 : baseQty, 
       is_one_time: isOneTime,
       unit: unit,
@@ -72,7 +69,7 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
   };
 
   return (
-    <div className="animate-slide-in font-sans max-w-md mx-auto mt-1 px-1" dir="rtl">
+    <div className="animate-slide-in font-sans max-w-md mx-auto mt-1 px-1">
       <div className="bg-white rounded-[1.5rem] border border-slate-200 p-4 shadow-sm">
         <h3 className="font-black text-lg text-slate-800 mb-3 text-right">הוספת פריט</h3>
         
