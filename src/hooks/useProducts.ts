@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useEffect } from "react";
 import { toast } from "sonner";
 import { getDepartmentUnit } from "./useDepartments";
+import { useSpace } from "@/contexts/SpaceContext";
 
 export type Product = {
   id: string;
@@ -15,6 +16,7 @@ export type Product = {
   sort_order: number;
   updated_at: string;
   unit: string;
+  space_id?: string;
 };
 
 export const getDepartmentColor = (dept: string) => {
@@ -33,36 +35,43 @@ export const getDepartmentColor = (dept: string) => {
 
 export function useProducts() {
   const queryClient = useQueryClient();
+  const { activeSpace } = useSpace();
 
   const { data: products = [], isLoading } = useQuery({
-    queryKey: ["products"],
+    queryKey: ["products", activeSpace?.id],
     queryFn: async () => {
+      if (!activeSpace) return [];
+
       const { data, error } = await supabase
         .from("products")
         .select("*")
+        .eq("space_id", activeSpace.id)
         .order("department", { ascending: true })
         .order("sort_order", { ascending: true })
         .order("product_name", { ascending: true });
       if (error) throw error;
       return data as Product[];
     },
+    enabled: !!activeSpace,
   });
 
   useEffect(() => {
+    if (!activeSpace) return;
+    
     const channel = supabase
-      .channel("products-realtime")
+      .channel(`products-realtime-${activeSpace.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "products" },
+        { event: "*", schema: "public", table: "products", filter: `space_id=eq.${activeSpace.id}` },
         () => {
-          queryClient.invalidateQueries({ queryKey: ["products"] });
+          queryClient.invalidateQueries({ queryKey: ["products", activeSpace.id] });
         }
       )
       .subscribe();
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [queryClient]);
+  }, [queryClient, activeSpace]);
 
   const addProduct = useMutation({
     mutationFn: async (product: {
@@ -73,11 +82,14 @@ export function useProducts() {
       is_one_time?: boolean;
       unit?: string;
     }) => {
-      const { error } = await supabase.from("products").insert(product);
+      if (!activeSpace) throw new Error("No active space");
+      const { error } = await supabase
+        .from("products")
+        .insert({ ...product, space_id: activeSpace.id });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products", activeSpace?.id] });
       toast.success("המוצר נוסף בהצלחה");
     },
     onError: () => toast.error("שגיאה בהוספת מוצר"),
@@ -89,7 +101,7 @@ export function useProducts() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products", activeSpace?.id] });
       toast.success("המוצר עודכן");
     },
     onError: () => toast.error("שגיאה בעדכון מוצר"),
@@ -100,7 +112,7 @@ export function useProducts() {
       const { error } = await supabase.from("products").update({ current_stock }).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products", activeSpace?.id] }),
     onError: () => toast.error("שגיאה בעדכון מלאי"),
   });
 
@@ -110,7 +122,7 @@ export function useProducts() {
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products", activeSpace?.id] });
       toast.success("המוצר נמחק");
     },
     onError: () => toast.error("שגיאה במחיקת מוצר"),
@@ -123,14 +135,13 @@ export function useProducts() {
         if (error) throw error;
       }
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products", activeSpace?.id] }),
     onError: () => toast.error("שגיאה בשינוי סדר"),
   });
 
   const finishChecked = useMutation({
     mutationFn: async (checkedIds: Set<string>) => {
       const checkedProducts = products.filter((p) => checkedIds.has(p.id));
-      // For non-one-time checked items, reset stock to base
       const toReset = checkedProducts.filter((p) => !p.is_one_time);
       for (const p of toReset) {
         const { error } = await supabase
@@ -139,7 +150,6 @@ export function useProducts() {
           .eq("id", p.id);
         if (error) throw error;
       }
-      // Delete one-time checked items
       const oneTimeIds = checkedProducts.filter((p) => p.is_one_time).map((p) => p.id);
       if (oneTimeIds.length > 0) {
         const { error } = await supabase.from("products").delete().in("id", oneTimeIds);
@@ -147,7 +157,7 @@ export function useProducts() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products"] });
+      queryClient.invalidateQueries({ queryKey: ["products", activeSpace?.id] });
       toast.success("המוצרים שנקנו עודכנו!");
     },
     onError: () => toast.error("שגיאה בעדכון"),
