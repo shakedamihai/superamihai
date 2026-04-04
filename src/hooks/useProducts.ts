@@ -74,26 +74,30 @@ export function useProducts() {
   }, [queryClient, activeSpace]);
 
   const addProduct = useMutation({
-    mutationFn: async (product: {
-      product_name: string;
-      department: string;
-      base_quantity: number;
-      current_stock?: number;
-      is_one_time?: boolean;
-      unit?: string;
-    }) => {
-      if (!activeSpace) throw new Error("No active space");
-      const { error } = await supabase
-        .from("products")
-        .insert({ ...product, space_id: activeSpace.id });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["products", activeSpace?.id] });
-      toast.success("המוצר נוסף בהצלחה");
-    },
-    onError: () => toast.error("שגיאה בהוספת מוצר"),
-  });
+  mutationFn: async (newProduct: any) => {
+    // וידוא אחרון שהשדות הנכונים נשלחים
+    const { data, error } = await supabase
+      .from('products')
+      .insert([{
+        ...newProduct,
+        // אם לא נשלח סטטוס, נקבע ברירת מחדל
+        status: newProduct.status || (newProduct.is_one_time ? 'to_buy' : 'in_stock')
+      }])
+      .select();
+    if (error) throw error;
+    return data;
+  },
+  onSuccess: () => {
+    // הפקודה הזו היא "הקסם" - היא מוחקת את המידע הישן מהזיכרון של הדפדפן
+    // ומכריחה את Index.tsx למשוך את המוצרים החדשים שראית ב-SQL
+    queryClient.invalidateQueries({ queryKey: ['products'] });
+    queryClient.invalidateQueries({ queryKey: ['products', spaceId] });
+    toast.success("המוצר נוסף בהצלחה!");
+  },
+  onError: (error: any) => {
+    toast.error("שגיאה בהוספת מוצר: " + error.message);
+  }
+});
 
   const updateProduct = useMutation({
     mutationFn: async ({ id, ...updates }: { id: string; product_name?: string; department?: string; base_quantity?: number; current_stock?: number; unit?: string }) => {
