@@ -25,18 +25,19 @@ export default function Index() {
   const [isAuthChecking, setIsAuthChecking] = useState(true);
   const [activeTab, setActiveTab] = useState<Tab>("shopping");
 
+  // שינוי 1: העברת ה-ID של הרשימה הפעילה ל-Hooks כדי שהנתונים יימשכו מהרשימה הנכונה
   const {
-  shoppingByDepartment, shoppingList, copyListAsText, finishChecked,
-  deleteProduct, updateStock, updateProduct, productsByDepartment,
-  reorderProducts, addProduct
-} = useProducts(activeSpace?.id || ""); // הוספנו את ה-ID
+    shoppingByDepartment, shoppingList, copyListAsText, finishChecked,
+    deleteProduct, updateStock, updateProduct, productsByDepartment,
+    reorderProducts, addProduct
+  } = useProducts(activeSpace?.id || "");
 
-const {
-  departments, departmentNames, reorderDepartments,
-  addDepartment, renameDepartment
-} = useDepartments(activeSpace?.id || ""); // הוספנו את ה-ID
+  const {
+    departments, departmentNames, reorderDepartments,
+    addDepartment, renameDepartment
+  } = useDepartments(activeSpace?.id || "");
 
-  // 1. בדיקת התחברות - מי שלא מחובר עף לדף ה-Auth
+  // 1. בדיקת התחברות
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -78,16 +79,14 @@ const {
     processInvite();
   }, [isAuthChecking, isLoadingSpaces, joinSpaceByToken]);
 
-  // מסכי טעינה
   if (isAuthChecking || isLoadingSpaces || isProcessingInvite) {
     return <div className="flex h-screen items-center justify-center bg-background" dir="rtl">טוען נתונים...</div>;
   }
 
-  // מסך יצירת רשימה ראשונה (Onboarding)
   if (spaces.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 text-center bg-background" dir="rtl">
-        <h1 className="text-3xl font-bold mb-2">ברוכים הבאים ל-Perfect Cart!</h1>
+        <h1 className="text-3xl font-bold mb-2">ברוכים הבאים ל-SuperAmihai!</h1>
         <p className="text-muted-foreground mb-8">כדי להתחיל, צרו את הרשימה המשותפת הראשונה שלכם.</p>
         
         <div className="w-full max-w-sm space-y-4">
@@ -111,7 +110,6 @@ const {
     );
   }
 
-  // האפליקציה עצמה
   return (
     <div className="flex flex-col min-h-screen bg-background pb-20" dir="rtl">
       <SpaceHeader />
@@ -147,11 +145,12 @@ const {
         
         {activeTab === "add" && (
           <AddProductView 
+            // שינוי 2: הזרקת ה-space_id וה-status הנכון בזמן הוספת מוצר
             onAdd={(product) => addProduct.mutate({
-  ...product,
-  space_id: activeSpace?.id, // שיוך לרשימה הפעילה
-  status: product.is_one_time ? 'to_buy' : 'in_stock' // הגדרה אם זה הולך לקניות או למזווה
-})}
+              ...product,
+              space_id: activeSpace?.id,
+              status: product.is_one_time ? 'to_buy' : 'in_stock'
+            })}
             isAdding={addProduct.isPending}
             departmentNames={departmentNames}
             onAddDepartment={(name) => addDepartment.mutate(name)}
