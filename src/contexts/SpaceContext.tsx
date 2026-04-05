@@ -79,6 +79,7 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
+      // 1. יצירת הרשימה
       const { data: space, error: spaceError } = await supabase
         .from('spaces')
         .insert([{ name, owner_id: session.user.id }])
@@ -88,20 +89,26 @@ export const SpaceProvider = ({ children }: { children: ReactNode }) => {
       if (spaceError) throw spaceError;
 
       if (space) {
-        const { error: memberError } = await supabase
-          .from('space_members')
-          .insert([{ space_id: space.id, user_id: session.user.id }]);
+        // 2. הוספת המשתמש כחבר
+        await supabase.from('space_members').insert([{ space_id: space.id, user_id: session.user.id }]);
 
-        if (memberError) console.error("Member insert error:", memberError);
+        // 3. SEEDING: הוספת מחלקות ברירת מחדל (כדי שלא יהיה 0 בזיכרון)
+        const { STANDARD_DEPARTMENTS } = await import('@/hooks/useDepartments');
+        const departmentInserts = STANDARD_DEPARTMENTS.map((deptName, index) => ({
+          name: deptName,
+          space_id: space.id,
+          sort_order: index
+        }));
+        
+        await supabase.from('departments').insert(departmentInserts);
 
         await fetchSpaces();
-        // שמירת הרשימה החדשה בזיכרון כדי שלא נאבד אותה
         handleSetActiveSpace(space);
-        toast.success("הרשימה נוצרה בהצלחה!");
+        toast.success("הרשימה נוצרה עם כל המחלקות!");
       }
     } catch (error: any) {
       console.error("Error creating space:", error);
-      toast.error(error.message || "שגיאה ביצירת הרשימה");
+      toast.error("שגיאה ביצירת הרשימה");
     }
   };
 
