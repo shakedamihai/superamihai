@@ -155,9 +155,24 @@ export function PantryCheckView({
   }, [productsByDepartment]);
 
   const sortedDepts = useMemo(() => {
-    // הורדנו את ה-filter שחוסם מחלקות ללא מוצרים משוייכים
-    return [...(departments || [])].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
-  }, [departments]);
+    const deptsList = [...(departments || [])];
+    const existingNames = new Set(deptsList.map(d => d.name));
+    
+    // התיקון הקריטי: יצירת "מדף" וירטואלי לכל מחלקה שיש בה מוצרים 
+    // אבל משום מה חסרה ברשימת המחלקות הרשמית ב-DB
+    Object.keys(baseRecurringByDept).forEach((deptName, i) => {
+      if (!existingNames.has(deptName)) {
+        deptsList.push({
+          id: `auto-missing-dept-${i}`,
+          name: deptName,
+          sort_order: 1000 + i, // נשים אותם תמיד בסוף הרשימה
+          created_at: new Date().toISOString()
+        });
+      }
+    });
+
+    return deptsList.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+  }, [departments, baseRecurringByDept]);
 
   const [localDepts, setLocalDepts] = useState<Department[]>(sortedDepts);
   const [localRecurring, setLocalRecurring] = useState<Record<string, Product[]>>(baseRecurringByDept);
