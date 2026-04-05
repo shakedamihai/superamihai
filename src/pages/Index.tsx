@@ -139,7 +139,11 @@ export default function Index() {
           <PantryCheckView 
             productsByDepartment={productsByDepartment}
             departments={departments.length > 0 ? departments : departmentNames.map((name, i) => ({ id: `temp-${i}`, name, sort_order: i }))}
-            onUpdateStock={(id, stock) => updateStock.mutate({ id, current_stock: stock })}
+            onUpdateStock={(id, stock) => updateStock.mutate({ 
+              id, 
+              current_stock: stock, 
+              status: stock === 0 ? 'to_buy' : 'in_stock' 
+            })}
             onUpdateProduct={(updates) => updateProduct.mutate(updates as any)}
             onDeleteProduct={(id) => deleteProduct.mutate(id)}
             onReorderProducts={(updates) => reorderProducts.mutate(updates)}
