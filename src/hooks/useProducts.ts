@@ -106,11 +106,15 @@ export function useProducts() {
   });
 
   const updateStock = useMutation({
-    mutationFn: async ({ id, current_stock }: { id: string; current_stock: number }) => {
-      const { error } = await supabase.from("products").update({ current_stock }).eq("id", id);
+    mutationFn: async ({ id, current_stock, status }: { id: string; current_stock: number; status?: string }) => {
+      // בונים אובייקט עדכון שכולל תמיד כמות, ואם קיבלנו סטטוס אז גם אותו
+      const updateData: any = { current_stock };
+      if (status) updateData.status = status;
+      
+      const { error } = await supabase.from("products").update(updateData).eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products", activeSpace?.id] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products", currentSpaceId] }),
     onError: () => toast.error("שגיאה בעדכון מלאי"),
   });
 
