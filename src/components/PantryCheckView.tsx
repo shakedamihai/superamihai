@@ -255,11 +255,19 @@ export function PantryCheckView({
 
   const lowerQuery = searchQuery.toLowerCase();
   const displayDepts = useMemo(() => {
-    if (!searchQuery) return localDepts;
+    // שלב 1: לוקחים את כל המחלקות שיש להן לפחות מוצר אחד במלאי (או שתואמות לחיפוש)
     return localDepts.filter(dept => {
-      const matchesDept = dept.name.toLowerCase().includes(lowerQuery);
       const items = localRecurring[dept.name] || [];
-      return matchesDept || items.some(p => p.product_name?.toLowerCase().includes(lowerQuery));
+      
+      // אם יש חיפוש - מציגים אם שם המחלקה או אחד המוצרים מתאים
+      if (searchQuery) {
+        const matchesDept = dept.name.toLowerCase().includes(lowerQuery);
+        const matchesProduct = items.some(p => p.product_name?.toLowerCase().includes(lowerQuery));
+        return matchesDept || matchesProduct;
+      }
+      
+      // אם אין חיפוש - מציגים רק אם יש לפחות מוצר אחד במחלקה הזו
+      return items.length > 0;
     });
   }, [localDepts, localRecurring, searchQuery, lowerQuery]);
 
