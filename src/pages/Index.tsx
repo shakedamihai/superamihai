@@ -158,8 +158,8 @@ export default function Index() {
           <AddProductView 
             onAdd={(product) => addProduct.mutate({
               ...product,
-              space_id: activeSpace?.id,
-              status: product.is_one_time ? 'to_buy' : 'in_stock'
+              space_id: activeSpace?.id || spaces[0]?.id,
+              status: 'to_buy' // <--- התיקון: מעכשיו כל מוצר חדש מוגדר כדורש קנייה
             })}
             isAdding={addProduct.isPending}
             departmentNames={departmentNames}
