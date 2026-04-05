@@ -81,17 +81,22 @@ export function useDepartments(spaceIdParam?: string) {
     },
     enabled: !!currentSpaceId,
   });
-// התיקון הקריטי: אם השרת ריק (0 מחלקות), נייצר 19 מדפים בזיכרון. 
-  // ככה אף מוצר קבוע לא יעלם בגלל שחסר לו מדף!
-  const departments = dbDepartments.length > 0 
-    ? dbDepartments 
-    : STANDARD_DEPARTMENTS.map((name, index) => ({
+// התיקון האמיתי: מיזוג של השרת עם מחלקות הסטנדרט.
+  // ככה מונעים מצב שהוספת מחלקה אחת לשרת מוחקת את כל ה-19 האחרות.
+  const dbDeptNames = new Set(dbDepartments.map(d => d.name));
+  
+  const missingStandard = STANDARD_DEPARTMENTS
+    .filter(name => !dbDeptNames.has(name)) // ניקח רק את הסטנדרטיות שעוד לא קיימות בשרת
+    .map((name, index) => ({
         id: `std-dept-${index}`,
         name,
-        sort_order: index,
+        sort_order: index, // נשמור על הסדר המקורי שלהן
         created_at: new Date().toISOString(),
         space_id: currentSpaceId
-      }));
+    }));
+
+  // נאחד את המחלקות מהשרת יחד עם הסטנדרטיות שחסרות, ונמיין לפי סדר
+  const departments = [...dbDepartments, ...missingStandard].sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
   useEffect(() => {
     if (!currentSpaceId) return;
 
