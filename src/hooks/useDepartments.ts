@@ -65,7 +65,7 @@ export function useDepartments(spaceIdParam?: string) {
   const currentSpaceId = spaceIdParam || activeSpace?.id;
 
   // 1. קריאה טהורה ובטוחה מ-Supabase בלבד
-  const { data: departments = [], isLoading } = useQuery({
+  const { data: dbDepartments = [], isLoading } = useQuery({
     queryKey: ["departments", currentSpaceId],
     queryFn: async () => {
       if (!currentSpaceId) return [];
@@ -81,7 +81,17 @@ export function useDepartments(spaceIdParam?: string) {
     },
     enabled: !!currentSpaceId,
   });
-
+// התיקון הקריטי: אם השרת ריק (0 מחלקות), נייצר 19 מדפים בזיכרון. 
+  // ככה אף מוצר קבוע לא יעלם בגלל שחסר לו מדף!
+  const departments = dbDepartments.length > 0 
+    ? dbDepartments 
+    : STANDARD_DEPARTMENTS.map((name, index) => ({
+        id: `std-dept-${index}`,
+        name,
+        sort_order: index,
+        created_at: new Date().toISOString(),
+        space_id: currentSpaceId
+      }));
   useEffect(() => {
     if (!currentSpaceId) return;
 
@@ -193,11 +203,8 @@ export function useDepartments(spaceIdParam?: string) {
 
  return {
     departments,
-    // התיקון הקריטי: משלבים את המחלקות הסטנדרטיות יחד עם המחלקות מה-DB ומונעים כפילויות!
-    departmentNames: Array.from(new Set([
-      ...STANDARD_DEPARTMENTS,
-      ...departments.map((d) => d.name)
-    ])),
+    // עכשיו זה פשוט ונקי - המדפים למעלה כבר מסודרים, אז פשוט שולפים מהם את השמות:
+    departmentNames: departments.map(d => d.name),
     isLoading,
     syncStandardDepartments,
     addDepartment,
