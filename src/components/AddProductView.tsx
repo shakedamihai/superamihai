@@ -57,8 +57,8 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
       product_name: name.trim(),
       department,
       base_quantity: baseQty,
-      // השינוי היחיד: אם מוצר קבוע, הוא מתחיל עם מלאי שווה לכמות הבסיס
-      current_stock: isOneTime ? 0 : baseQty, 
+      // התיקון: כל מוצר שנולד, מתחיל במלאי 0 כדי שיקפוץ ישר לקניות
+      current_stock: 0, 
       is_one_time: isOneTime,
       unit: unit,
     });
