@@ -53,6 +53,11 @@ export function AddProductView({ onAdd, isAdding, departmentNames, onAddDepartme
     e.preventDefault();
     if (!name.trim()) return;
 
+    // התיקון: אם המחלקה מהזיהוי האוטומטי לא קיימת ברשימת המחלקות הידועה, נוסיף אותה רשמית ל-DB
+    if (!departmentNames.includes(department)) {
+      onAddDepartment(department);
+    }
+
     onAdd({
       product_name: name.trim(),
       department,
