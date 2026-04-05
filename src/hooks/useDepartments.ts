@@ -69,7 +69,6 @@ export function useDepartments(spaceIdParam?: string) {
     queryFn: async () => {
       if (!currentSpaceId) return [];
       
-      // 1. קריאה רגילה ממסד הנתונים
       const { data, error } = await supabase
         .from("departments")
         .select("*")
@@ -78,8 +77,7 @@ export function useDepartments(spaceIdParam?: string) {
         
       if (error) throw error;
 
-      // 2. מנגנון ריפוי עצמי (Self-Healing)
-      // אם בסיס הנתונים ריק, אנחנו כותבים אליו את המחלקות עכשיו
+      // מנגנון הריפוי העצמי - אם ה-DB ריק, מייצרים נתונים אמיתיים
       if (!data || data.length === 0) {
         console.log("No departments found in DB. Auto-seeding now...");
         const inserts = STANDARD_DEPARTMENTS.map((name, index) => ({
@@ -91,39 +89,22 @@ export function useDepartments(spaceIdParam?: string) {
         const { data: seededData, error: seedError } = await supabase
           .from("departments")
           .insert(inserts)
-          .select('*')
-          .order('sort_order', { ascending: true });
+          .select('*');
 
         if (seedError) {
           console.error("Error seeding departments:", seedError);
           return [];
         }
         
-        return seededData as Department[];
+        // ממיינים את התוצאות שחזרו מהשרת
+        const sortedSeed = (seededData as Department[]).sort((a, b) => a.sort_order - b.sort_order);
+        return sortedSeed;
       }
 
       return data as Department[];
     },
     enabled: !!currentSpaceId,
   });
-
-  // --- התוספת החדשה: אם בסיס הנתונים ריק ממחלקות, שולפים אותן מהמוצרים או מהקבועים ---
-  const { data: fallbackDepartments = [] } = useQuery({
-    queryKey: ["products_departments_fallback", currentSpaceId],
-    queryFn: async () => {
-       if (!currentSpaceId || departments.length > 0) return [];
-       const { data } = await supabase
-         .from("products")
-         .select("department")
-         .eq("space_id", currentSpaceId);
-       
-       if (!data) return STANDARD_DEPARTMENTS;
-       const uniqueDepts = Array.from(new Set(data.map(p => p.department)));
-       return uniqueDepts.length > 0 ? uniqueDepts : STANDARD_DEPARTMENTS;
-    },
-    enabled: !!currentSpaceId && departments.length === 0,
-  });
-  // -----------------------------------------------------------------------------------
 
   useEffect(() => {
     if (!currentSpaceId) return;
@@ -236,10 +217,10 @@ export function useDepartments(spaceIdParam?: string) {
 
   return {
     departments,
-    // התיקון: תמיד נציג את כל 19 מחלקות הבסיס, פלוס המחלקות הקיימות, כדי שיופיעו בטופס ההוספה
+    // התיקון: תמיד מציגים את המחלקות. אם הטעינה עוד לא סיימה, נציג את הסטנדרטיות כגיבוי לתצוגה בלבד
     departmentNames: departments.length > 0 
       ? departments.map((d) => d.name) 
-      : Array.from(new Set([...STANDARD_DEPARTMENTS, ...fallbackDepartments])),
+      : STANDARD_DEPARTMENTS,
     isLoading,
     syncStandardDepartments,
     addDepartment,
