@@ -109,14 +109,6 @@ export default function Index() {
 
   return (
     <div className="flex flex-col min-h-screen bg-background pb-20" dir="rtl">
-      <div className="bg-black text-lime-400 p-3 m-4 rounded-xl text-left font-mono text-xs shadow-lg" dir="ltr">
-        <b>🔍 DEBUG MODE - WE HAVE DATA!</b><br/><br/>
-        Products in memory: {products?.length || 0}<br/>
-        Departments in memory: {departments?.length || 0}<br/><br/>
-        <b>Product Names:</b><br/> 
-        {products?.map(p => p.product_name).join(", ")}
-      </div>
-
       <main className="flex-1 p-4 md:max-w-2xl md:mx-auto md:w-full">
         {activeTab === "shopping" && (
           <ShoppingListView 
