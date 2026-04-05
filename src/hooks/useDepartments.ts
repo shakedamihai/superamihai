@@ -62,8 +62,6 @@ export function isLactoseFree(productName: string): boolean {
 export function useDepartments(spaceIdParam?: string) {
   const queryClient = useQueryClient();
   const { activeSpace } = useSpace();
-  
-  // הוספנו פה הגנה קטנה כדי לקבל את המזהה בבטחה
   const currentSpaceId = spaceIdParam || activeSpace?.id;
 
   const { data: departments = [], isLoading } = useQuery({
@@ -71,12 +69,39 @@ export function useDepartments(spaceIdParam?: string) {
     queryFn: async () => {
       if (!currentSpaceId) return [];
       
+      // 1. קריאה רגילה ממסד הנתונים
       const { data, error } = await supabase
         .from("departments")
         .select("*")
         .eq("space_id", currentSpaceId)
         .order("sort_order", { ascending: true });
+        
       if (error) throw error;
+
+      // 2. מנגנון ריפוי עצמי (Self-Healing)
+      // אם בסיס הנתונים ריק, אנחנו כותבים אליו את המחלקות עכשיו
+      if (!data || data.length === 0) {
+        console.log("No departments found in DB. Auto-seeding now...");
+        const inserts = STANDARD_DEPARTMENTS.map((name, index) => ({
+          name,
+          space_id: currentSpaceId,
+          sort_order: index
+        }));
+
+        const { data: seededData, error: seedError } = await supabase
+          .from("departments")
+          .insert(inserts)
+          .select('*')
+          .order('sort_order', { ascending: true });
+
+        if (seedError) {
+          console.error("Error seeding departments:", seedError);
+          return [];
+        }
+        
+        return seededData as Department[];
+      }
+
       return data as Department[];
     },
     enabled: !!currentSpaceId,
