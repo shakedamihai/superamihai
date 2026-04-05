@@ -211,12 +211,14 @@ export function useDepartments(spaceIdParam?: string) {
 
   return {
     departments,
-    // --- התיקון הקריטי להצגת המוצרים: אם אין מחלקות במסד, דוחף למסך את הגיבוי ---
-    departmentNames: departments.length > 0 ? departments.map((d) => d.name) : fallbackDepartments,
+    // התיקון: תמיד נציג את כל 19 מחלקות הבסיס, פלוס המחלקות הקיימות, כדי שיופיעו בטופס ההוספה
+    departmentNames: departments.length > 0 
+      ? departments.map((d) => d.name) 
+      : Array.from(new Set([...STANDARD_DEPARTMENTS, ...fallbackDepartments])),
     isLoading,
     syncStandardDepartments,
     addDepartment,
     renameDepartment,
-    reorderDepartments // הוספתי לך את זה, היה חסר בקוד המקורי
+    reorderDepartments
   };
 }
