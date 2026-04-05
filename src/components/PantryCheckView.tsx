@@ -265,6 +265,24 @@ export function PantryCheckView({
 
   return (
     <div className="w-full flex flex-col items-center py-4 min-h-[150vh] bg-slate-50/50 font-sans pb-12">
+      {/* --- התחלת הקוד האדום לבדיקה --- */}
+      <div className="w-full max-w-[calc(100vw-20px)] md:max-w-[calc(100vw-32px)] bg-red-100 p-6 mb-6 rounded-3xl text-red-800 text-right font-bold border-4 border-red-300 shadow-xl z-[9999] relative">
+        <h2 className="text-xl mb-2">🚨 רנטגן נתונים - האם ה-Props הגיעו?</h2>
+        <p>מספר מחלקות ב-Props: {Object.keys(productsByDepartment || {}).length}</p>
+        <ul className="list-disc pr-6 mt-3 text-sm font-normal">
+          {Object.entries(productsByDepartment || {}).map(([name, items]) => (
+            <li key={name} className="mb-1">
+              <b>{name}:</b> {items.length} מוצרים נמצאו
+            </li>
+          ))}
+        </ul>
+        {Object.keys(productsByDepartment || {}).length === 0 && (
+          <p className="mt-4 text-red-600 animate-pulse underline font-black">
+            אזהרה: אובייקט productsByDepartment ריק לגמרי!
+          </p>
+        )}
+      </div>
+      {/* --- סוף הקוד האדום --- */}
       <div className="w-full max-w-[calc(100vw-20px)] md:max-w-[calc(100vw-32px)] space-y-6">
         <div className="relative bg-white border border-slate-200 shadow-sm rounded-[2rem] p-6 font-sans">
           <div className="flex gap-2">
