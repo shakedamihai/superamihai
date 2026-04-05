@@ -125,7 +125,11 @@ export default function Index() {
             onCopyList={copyListAsText}
             onFinishChecked={(ids) => finishChecked.mutate(ids)}
             onDeleteProduct={(id) => deleteProduct.mutate(id)}
-            onUpdateStock={(id, stock) => updateStock.mutate({ id, current_stock: stock })}
+            onUpdateStock={(id, stock) => updateStock.mutate({ 
+              id, 
+              current_stock: stock, 
+              status: stock === 0 ? 'to_buy' : 'in_stock' 
+            })}
             onUpdateProduct={(updates) => updateProduct.mutate(updates as any)}
             isFinishing={finishChecked.isPending}
           />
