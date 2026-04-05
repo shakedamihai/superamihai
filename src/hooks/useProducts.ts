@@ -107,15 +107,30 @@ export function useProducts() {
 
   const updateStock = useMutation({
     mutationFn: async ({ id, current_stock, status }: { id: string; current_stock: number; status?: string }) => {
-      // בונים אובייקט עדכון שכולל תמיד כמות, ואם קיבלנו סטטוס אז גם אותו
-      const updateData: any = { current_stock };
-      if (status) updateData.status = status;
+      // 1. הגנה הרמטית: המלאי בחיים לא יירד מתחת ל-0
+      const safeStock = Math.max(0, current_stock);
       
-      const { error } = await supabase.from("products").update(updateData).eq("id", id);
+      // 2. כפיית לוגיקה: אם המלאי הוא 0, הסטטוס חייב להיות קנייה! לא משנה מה ה-UI שלח.
+      const safeStatus = safeStock === 0 ? 'to_buy' : 'in_stock';
+
+      const updateData = { 
+        current_stock: safeStock,
+        status: safeStatus 
+      };
+
+      const { error } = await supabase
+        .from("products")
+        .update(updateData)
+        .eq("id", id);
+        
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products", currentSpaceId] }),
-    onError: () => toast.error("שגיאה בעדכון מלאי"),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["products", activeSpace?.id] }),
+    onError: (error: any) => {
+      console.error("Supabase Error:", error);
+      // עכשיו, אם תהיה שגיאה, לא ננחש אותה - השרת יגיד לנו בדיוק מה הבעיה!
+      toast.error(`שגיאת שרת: ${error.message || 'שגיאה לא ידועה'}`);
+    },
   });
 
   const deleteProduct = useMutation({
