@@ -191,12 +191,13 @@ export function useDepartments(spaceIdParam?: string) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["departments", currentSpaceId] }),
   });
 
-  return {
+ return {
     departments,
-    // 2. רשת הביטחון: אם אין ב-DB כלום, משתמשים ברשימה הסטנדרטית רק עבור כפתורי ההוספה, כדי שהמשתמש לא ייתקע
-    departmentNames: departments.length > 0 
-      ? departments.map((d) => d.name) 
-      : STANDARD_DEPARTMENTS,
+    // התיקון הקריטי: משלבים את המחלקות הסטנדרטיות יחד עם המחלקות מה-DB ומונעים כפילויות!
+    departmentNames: Array.from(new Set([
+      ...STANDARD_DEPARTMENTS,
+      ...departments.map((d) => d.name)
+    ])),
     isLoading,
     syncStandardDepartments,
     addDepartment,
