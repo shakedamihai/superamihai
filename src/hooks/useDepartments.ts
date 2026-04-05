@@ -64,6 +64,7 @@ export function useDepartments(spaceIdParam?: string) {
   const { activeSpace } = useSpace();
   const currentSpaceId = spaceIdParam || activeSpace?.id;
 
+  // 1. קריאה טהורה ובטוחה מ-Supabase בלבד
   const { data: departments = [], isLoading } = useQuery({
     queryKey: ["departments", currentSpaceId],
     queryFn: async () => {
@@ -76,31 +77,6 @@ export function useDepartments(spaceIdParam?: string) {
         .order("sort_order", { ascending: true });
         
       if (error) throw error;
-
-      // מנגנון הריפוי העצמי - אם ה-DB ריק, מייצרים נתונים אמיתיים
-      if (!data || data.length === 0) {
-        console.log("No departments found in DB. Auto-seeding now...");
-        const inserts = STANDARD_DEPARTMENTS.map((name, index) => ({
-          name,
-          space_id: currentSpaceId,
-          sort_order: index
-        }));
-
-        const { data: seededData, error: seedError } = await supabase
-          .from("departments")
-          .insert(inserts)
-          .select('*');
-
-        if (seedError) {
-          console.error("Error seeding departments:", seedError);
-          return [];
-        }
-        
-        // ממיינים את התוצאות שחזרו מהשרת
-        const sortedSeed = (seededData as Department[]).sort((a, b) => a.sort_order - b.sort_order);
-        return sortedSeed;
-      }
-
       return data as Department[];
     },
     enabled: !!currentSpaceId,
@@ -217,7 +193,7 @@ export function useDepartments(spaceIdParam?: string) {
 
   return {
     departments,
-    // התיקון: תמיד מציגים את המחלקות. אם הטעינה עוד לא סיימה, נציג את הסטנדרטיות כגיבוי לתצוגה בלבד
+    // 2. רשת הביטחון: אם אין ב-DB כלום, משתמשים ברשימה הסטנדרטית רק עבור כפתורי ההוספה, כדי שהמשתמש לא ייתקע
     departmentNames: departments.length > 0 
       ? departments.map((d) => d.name) 
       : STANDARD_DEPARTMENTS,
